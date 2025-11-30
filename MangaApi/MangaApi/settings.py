@@ -155,6 +155,11 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.miswebtoons.uk",
     "http://localhost:5173",
 ]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.miswebtoons\.uk$",
+]
+
 # If you prefer to allow any origin while developing, set to True (not recommended for production):
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = [
@@ -174,4 +179,9 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+]
+
+ALLOWED_HOSTS = [
+    "mangareader-production.up.railway.app/",
+    "localhost",
 ]
