@@ -152,7 +152,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_CREDENTIALS = True
 # Allow the Vite dev server origin during development
 CORS_ALLOWED_ORIGINS = [
-    "https://www.miswebtoons.uk/",
+    "https://www.miswebtoons.uk",
     "http://localhost:5173",
 ]
 # If you prefer to allow any origin while developing, set to True (not recommended for production):
