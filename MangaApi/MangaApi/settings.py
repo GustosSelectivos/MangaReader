@@ -188,6 +188,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.miswebtoons.uk",
     "http://localhost:5173",
     "https://mangareader-production.up.railway.app",
+    "https://manga-reader-bv4.pages.dev",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
