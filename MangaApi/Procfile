@@ -1,1 +1,1 @@
-web: gunicorn MangaApi.wsgi
+web: gunicorn MangaApi.wsgi:application
