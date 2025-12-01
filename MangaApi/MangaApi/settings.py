@@ -36,8 +36,10 @@ SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = str(os.getenv("DEBUG_API", "True")).lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
-
+ALLOWED_HOSTS = [
+    "www.miswebtoons.uk",
+    "mangareader-production.up.railway.app",
+]
 
 # Application definition
 
@@ -185,6 +187,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://www.miswebtoons.uk",
     "http://localhost:5173",
+    "https://mangareader-production.up.railway.app",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
