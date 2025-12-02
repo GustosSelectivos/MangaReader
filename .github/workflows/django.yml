@@ -54,6 +54,6 @@ jobs:
     - name: Run Django tests
       working-directory: MangaApi
       env:
-        DJANGO_SETTINGS_MODULE: MangaApi.settings
+        DJANGO_SETTINGS_MODULE: MangaApi.settings_test
       run: |
         python manage.py test --verbosity=2
