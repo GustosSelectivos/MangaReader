@@ -193,6 +193,8 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.miswebtoons\.uk$",
+    r"^https://.*\.up\.railway\.app$",
+    r"^https://.*\.pages\.dev$",
 ]
 
 # If you prefer to allow any origin while developing, set to True (not recommended for production):

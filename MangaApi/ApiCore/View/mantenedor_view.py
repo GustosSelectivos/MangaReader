@@ -22,7 +22,7 @@ class EstadosViewSet(viewsets.ModelViewSet):
     serializer_class = EstadoSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
-    search_fields = ['nombre']
+    search_fields = ['descripcion']
 
 
 class DemografiaViewSet(viewsets.ModelViewSet):
@@ -38,4 +38,4 @@ class TagsViewSet(viewsets.ModelViewSet):
     serializer_class = TagSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
-    search_fields = ['nombre']
+    search_fields = ['descripcion']

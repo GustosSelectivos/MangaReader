@@ -9,3 +9,6 @@ class chapter(models.Model):
     volumen_numero = models.DecimalField(max_digits=6, decimal_places=2, null=True, db_column='CHR_VOLUMEN_NUMERO')
     pages = models.JSONField(default=dict, null=True, db_column='CHR_PAGES')
     
+    class Meta:
+        db_table = 'apicore_chapter'
+    

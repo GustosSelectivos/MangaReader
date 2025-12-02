@@ -21,6 +21,9 @@ class manga(models.Model):
     vigente = models.BooleanField(default=True, null=False, db_column='MNG_VIGENTE')
     vistas = models.PositiveIntegerField(default=0, null=False, db_column='MNG_VISTA')
     erotico = models.BooleanField(default=False, null=False, db_column='MNG_EROTICO')
+    
+    class Meta:
+        db_table = 'apicore_manga'
 
 class manga_alt_titulo(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MAT_ID')
@@ -28,6 +31,9 @@ class manga_alt_titulo(models.Model):
     titulo_alternativo = models.CharField(max_length=200, null=False, db_column='MAT_TITULO_ALTERNATIVO')
     codigo_lenguaje = models.CharField(max_length=10, null=False, db_column='MAT_CODIGO_LENGUAJE')
     vigente = models.BooleanField(default=True, null=False, db_column='MAT_VIGENTE')
+    
+    class Meta:
+        db_table = 'apicore_manga_alt_titulo'
 
 class manga_cover(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MCV_ID')
@@ -41,6 +47,9 @@ class manga_cover(models.Model):
     ]
     tipo_cover = models.CharField(max_length=20, choices=cover_tipo, default='main', null=False, db_column='MCV_COVER_TIPO')
     vigente = models.BooleanField(default=True, null=False, db_column='MCV_VIGENTE')
+    
+    class Meta:
+        db_table = 'apicore_manga_cover'
 
 class manga_autor(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MAU_ID')
@@ -54,9 +63,15 @@ class manga_autor(models.Model):
     ]
     rol = models.CharField(max_length=20, choices=rol_tipo, default='author', null=False, db_column='MAU_ROL')
     vigente = models.BooleanField(default=True, null=False, db_column='MAU_VIGENTE')
+    
+    class Meta:
+        db_table = 'apicore_manga_autor'
 
 class manga_tag(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MTG_ID')
     manga = models.ForeignKey(manga, on_delete=models.PROTECT, db_column='MTG_MANGA_ID')
     tag = models.ForeignKey(tags, on_delete=models.PROTECT, db_column='MTG_TAG_ID')
     vigente = models.BooleanField(default=True, null=False, db_column='MTG_VIGENTE')
+    
+    class Meta:
+        db_table = 'apicore_manga_tag'
