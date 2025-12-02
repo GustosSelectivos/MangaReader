@@ -16,15 +16,21 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from ApiCore.Router.mantenedor_router import router as mantenedor_router
 from ApiCore.Router.manga_router import router as manga_router
 from ApiCore.Router.chapter_router import router as chapter_router
+from ApiCore.View.stats_view import APIStatsView, APIStatsResetView
 
 # Include each partial router so those files control their own endpoints
 urlpatterns = [
     path('admin/', admin.site.urls),
-        path('api/mantenedor/', include((mantenedor_router.urls, 'mantenedor'))),
-        path('api/manga/', include((manga_router.urls, 'manga'))),
-        path('api/chapters/', include((chapter_router.urls, 'chapter'))),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/stats/', APIStatsView.as_view(), name='api_stats'),
+    path('api/stats/reset/', APIStatsResetView.as_view(), name='api_stats_reset'),
+    path('api/mantenedor/', include((mantenedor_router.urls, 'mantenedor'))),
+    path('api/manga/', include((manga_router.urls, 'manga'))),
+    path('api/chapters/', include((chapter_router.urls, 'chapter'))),
 ]
