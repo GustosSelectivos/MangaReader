@@ -391,12 +391,10 @@ async function loadTrendingFiltered() {
   let params = { ...baseParams }
   // Asegura tener demografías antes de aplicar filtro por tab
   await ensureDemografiaIds()
-  if (trendingFilter.value === 'shonen' && demografiaIds.value.shonen) params.demografia = demografiaIds.value.shonen
-  else if (trendingFilter.value === 'seinen' && demografiaIds.value.seinen) params.demografia = demografiaIds.value.seinen
+  // Filtro por demografía (ID). Shonen usa 7 en tu backend.
+  if (trendingFilter.value === 'shonen') params.demografia = demografiaIds.value.shonen ?? 7
+  else if (trendingFilter.value === 'seinen') params.demografia = demografiaIds.value.seinen ?? 9
   else if (trendingFilter.value === 'erotico' && demografiaIds.value.erotico) params.demografia = demografiaIds.value.erotico
-  // Además, algunos backends esperan 'tipo_manga' textual: shonen/seinen
-  if (trendingFilter.value === 'shonen') params.tipo_manga = 'shonen'
-  if (trendingFilter.value === 'seinen') params.tipo_manga = 'seinen'
   // Backend-driven erotic filter when tab is 'erotico'
   if (trendingFilter.value === 'erotico') {
     params.erotico = true
