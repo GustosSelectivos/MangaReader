@@ -5,6 +5,7 @@ import cache from '@/services/cache'
 
 const populars = ref([])
 const trending = ref([])
+const displayedTrending = ref([])
 const latest = ref([])
 const mostViewed = ref([])
 const loading = ref(true)
@@ -13,13 +14,30 @@ const popularTab = ref('all')
 const pendingTab = ref('pending')
 const trendingTab = ref('all')
 const trendingFilter = ref('all') // control used now via tabs
+// Cache for fast tab switching (client-side filtered lists)
+const trendingCache = ref({ all: [], shonen: [], seinen: [], erotico: [] })
+// Avoid flicker while switching tabs and guard late API responses
+const switching = ref(false)
+let trendingFilterReqId = 0
 const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 
 function setPopularTab(v) {
   popularTab.value = v
   // Direct mapping: tab key equals trendingFilter (except 'all')
   trendingFilter.value = (v === 'all') ? 'all' : v
-  loadTrendingFiltered()
+  // Use cached client-side filtered results for instant switching (render list decoupled)
+  switching.value = true
+  const cached = trendingCache.value[v]
+  if (Array.isArray(cached) && cached.length) {
+    displayedTrending.value = cached
+  } else {
+    // Fallback to client-side filter over allPrepared data; keep it snappy
+    displayedTrending.value = getFilteredByTab(v)
+    // Populate cache for subsequent switches
+    trendingCache.value[v] = displayedTrending.value
+  }
+  // Release switching flag next microtask to avoid overlay
+  Promise.resolve().then(() => { switching.value = false })
 }
 function setPendingTab(v) { pendingTab.value = v }
 function setTrendingTab(v) { trendingTab.value = v }
@@ -263,6 +281,13 @@ async function loadData() {
     const nonEroticPrepared = prepared.filter(i => i.erotic !== true)
     populars.value = nonEroticPrepared.slice(0, 12)
     trending.value = nonEroticPrepared.slice(0, 8)
+    displayedTrending.value = trending.value
+    // Warm caches for fast tab switching
+    trendingCache.value.all = nonEroticPrepared
+    trendingCache.value.shonen = nonEroticPrepared.filter(i => String(i.demography || '').toLowerCase().includes('shon'))
+    trendingCache.value.seinen = nonEroticPrepared.filter(i => String(i.demography || '').toLowerCase().includes('sein'))
+    // Erotic list cached separately (resolved with isErotic to be consistent)
+    trendingCache.value.erotico = prepared.filter(i => isErotic(i) === true)
     latest.value = nonEroticPrepared.slice(4, 12)
 
     // Try to load most viewed from API (ordering by vistas desc)
@@ -353,6 +378,7 @@ async function resolveDemografiaDescripcion(numId) {
 }
 
 async function loadTrendingFiltered() {
+  const reqId = ++trendingFilterReqId
   const baseParams = { page_size: 100 }
   let params = { ...baseParams }
   if (trendingFilter.value === 'shonen' && demografiaIds.value.shonen) params.demografia = demografiaIds.value.shonen
@@ -402,7 +428,16 @@ async function loadTrendingFiltered() {
       copy.demography = String(dem || '')
       return copy
     }))
-    trending.value = mapped // show full list (render all mangas)
+    trending.value = mapped // fetched list stored
+    // Update cache for the current filter to speed subsequent tab switches
+    const key = trendingFilter.value
+    // Guard against late responses overriding a newer selection
+    if (reqId === trendingFilterReqId && key && trendingCache.value[key]) {
+      trendingCache.value[key] = mapped
+      if (popularTab.value === key) {
+        displayedTrending.value = mapped
+      }
+    }
   } catch (e) {
     // keep existing trending on error
   }
@@ -415,6 +450,20 @@ onMounted(async () => {
 
 // Watch the select filter
 watch(trendingFilter, () => { loadTrendingFiltered() })
+
+// Client-side filter helper for instant tab switches
+function getFilteredByTab(tab) {
+  const key = tab || 'all'
+  if (key === 'erotico') {
+    if (trendingCache.value.erotico.length) return trendingCache.value.erotico
+    const baseAll = trendingCache.value.all.length ? trendingCache.value.all : trending.value
+    return baseAll.filter(i => (i.erotico === true) || isErotic(i))
+  }
+  const base = trendingCache.value.all.length ? trendingCache.value.all : trending.value
+  if (key === 'shonen') return base.filter(i => String(i.demography || '').toLowerCase().includes('shon'))
+  if (key === 'seinen') return base.filter(i => String(i.demography || '').toLowerCase().includes('sein'))
+  return base
+}
 
 // (moved into onMounted above with demografia fetch)
 
@@ -486,7 +535,12 @@ function isErotic(item) {
 
 <template>
   <div class="home-view pb-5">
-    <div class="home-layout">
+    <div v-if="loading" class="loading-container">
+      <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
+      <p>Cargando contenido...</p>
+    </div>
+    
+    <div class="home-layout" v-else>
       <div class="home-main">
 
           <!-- Populares / Tabs -->
@@ -499,7 +553,7 @@ function isErotic(item) {
                 <a href="#" @click.prevent="setPopularTab('erotico')" :class="['nav-item nav-link', { active: popularTab === 'erotico' }]">Erótico</a>
               </nav>
 
-              <div class="tab-content" id="pills-tabContent">
+              <div class="tab-content" id="pills-tabContent" :key="popularTab">
                 <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars">
                   <div class="cards-grid">
                     <div v-for="item in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
@@ -584,7 +638,7 @@ function isErotic(item) {
             <div class="col">
               <h2 class="mt-3">Series Disponibles</h2>
               <div class="cards-grid cards-grid--trending">
-                <div v-for="item in trending" :key="`tr-${item.id}`" class="card-item">
+                <div v-for="item in (popularTab === 'erotico' ? displayedTrending.filter(i => isErotic(i)) : displayedTrending)" :key="`tr-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.id}`" class="card-link">
                     <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
                       <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
@@ -716,6 +770,22 @@ function isErotic(item) {
 .recommendation-inner h4 { font-size:16px; }
 .type-bubble { position:absolute; left:8px; top:36px; background:rgba(0,0,0,0.6); color:#fff; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:6px }
 .type-bubble .age-18 { color:#ff4d4f; background:transparent; padding-left:6px; font-weight:800 }
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 60px 20px;
+}
+
+.loading-icon {
+  width: 192px;
+  height: 192px;
+  margin-bottom: 20px;
+}
+
 /* Improve dark mode readability for muted texts */
 .home-view .text-muted { color: var(--ztmo-text); opacity: 0.75; }
 .home-view .form-label { color: var(--ztmo-text); }

@@ -157,5 +157,19 @@ function goNextChapter() {
   background: transparent;
 }
 
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px 0;
+}
+
+.loading-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+}
  
 </style>

@@ -36,7 +36,12 @@
                 </div>
               </div>
 
-              <section class="chapters-list card mb-3">
+              <div v-if="loading" class="loading-container my-4">
+                <img src="/assets/load.gif" alt="Cargando capítulos..." class="loading-icon" />
+                <p>Cargando capítulos...</p>
+              </div>
+
+              <section class="chapters-list card mb-3" v-else>
                 <h4 class="p-3 m-0">Capítulos</h4>
                 <ul class="list-group list-group-flush">
                   <li v-for="(ch, idx) in visibleChapters" :key="ch.id" class="list-group-item">
@@ -316,6 +321,20 @@ export default {
 .element-body { background: var(--surface-1, var(--color-background)); color: var(--text-primary); }
 /* icon alignment for upload button */
 .icon { vertical-align: text-bottom; }
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.loading-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+}
 
 /* Center the reader image container and its image */
 :deep(.page-viewer) {

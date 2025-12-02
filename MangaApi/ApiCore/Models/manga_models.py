@@ -11,7 +11,11 @@ class manga(models.Model):
     tipo_serie = [
         ("manga", "manga"),
         ("manhwa", "manhwa"),
-        ("manhua", "manhua")
+        ("manhua", "manhua"),
+        ("one shot", "one shot"),
+        ("novel", "novel",),
+        ("doujinshi", "doujinshi"),
+        ("comic", "comic")
     ]
     tipo_serie = models.CharField(max_length=20, choices=tipo_serie, default='manga', null=False, db_column='MNG_TIPO_SERIE')
     autor = models.ForeignKey(autores, on_delete=models.PROTECT, db_column='MNG_AUTOR_ID')

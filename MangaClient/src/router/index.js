@@ -7,6 +7,7 @@ import LoginView from '../views/LoginView.vue'
 import UploadChapterView from '../views/UploadChapterView.vue'
 import MantenedoresAdminView from '../views/MantenedoresAdminView.vue'
 import MangasAdminView from '../views/MangasAdminView.vue'
+// MangaCreatorView removed; keep redirect route below
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -65,6 +66,11 @@ const router = createRouter({
       name: 'dev-mangas',
       component: MangasAdminView,
       meta: { requiresAuth: true },
+    },
+    // Redirect legacy creator path to unified admin view
+    {
+      path: '/dev/manga-creator',
+      redirect: { name: 'dev-mangas' },
     },
   ],
 })

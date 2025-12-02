@@ -623,6 +623,8 @@ export default {
 
 .results { min-height:400px; grid-column: 1 / -1; }
 .loading, .error, .empty { padding:40px 0; text-align:center; font-size:15px; opacity:.8; }
+.loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; }
+.loading-icon { width: 48px; height: 48px; margin-bottom: 12px; }
 /* Dark mode readability for muted helper texts */
 .library-view .text-muted { color: var(--ztmo-text); opacity: 0.75; }
 .library-view .form-label, .library-view label { color: var(--ztmo-text); }

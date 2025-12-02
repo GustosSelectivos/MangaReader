@@ -140,7 +140,10 @@ onMounted(fetchLists)
     <h2 class="mb-3">Administrar Mantenedores</h2>
     <p class="text-muted">Gestiona demografías, tags, autores y estados.</p>
     <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
-    <div v-if="loading">Cargando...</div>
+    <div v-if="loading" class="loading-container">
+      <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
+      <p>Cargando mantenedores...</p>
+    </div>
     <div class="row" v-if="!loading">
       <div class="col-md-6 mb-4">
         <h5>Demografías</h5>
