@@ -152,7 +152,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # REST framework + JWT defaults (adjust as needed)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -161,7 +160,6 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
-    'UNAUTHENTICATED_USER': None,
 }
 
 # Simple JWT settings (use env vars in production)
