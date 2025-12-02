@@ -428,7 +428,7 @@ async function loadTrendingFiltered() {
       copy.demography = String(dem || '')
       return copy
     }))
-    trending.value = mapped // fetched list stored
+    // No sobrescribimos "trending" global para no impactar otras pestañas; solo cacheamos el filtro actual.
     // Update cache for the current filter to speed subsequent tab switches
     const key = trendingFilter.value
     // Guard against late responses overriding a newer selection
@@ -592,7 +592,8 @@ function isErotic(item) {
                 <!-- Simple placeholders for other tabs (can be replaced by filtered lists) -->
                 <div v-show="popularTab === 'shonen'" class="tab-pane" id="pills-populars-shonen">
                   <div class="cards-grid">
-                    <div v-for="item in trending.filter(i => (i.demography||'').toLowerCase().includes('shon')).filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
+                    <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
+                    <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
@@ -605,7 +606,8 @@ function isErotic(item) {
                 </div>
                 <div v-show="popularTab === 'seinen'" class="tab-pane" id="pills-populars-seinen">
                   <div class="cards-grid">
-                    <div v-for="item in trending.filter(i => (i.demography||'').toLowerCase().includes('sein')).filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
+                    <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
+                    <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
@@ -618,7 +620,8 @@ function isErotic(item) {
                 </div>
                 <div v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico">
                   <div class="cards-grid">
-                    <div v-for="item in trending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
+                    <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
+                    <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
