@@ -39,6 +39,9 @@ DEBUG = str(os.getenv("DEBUG_API", "True")).lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = [
     "www.miswebtoons.uk",
     "mangareader-production.up.railway.app",
+    "manga-reader-bv4.pages.dev",
+    "127.0.0.1",
+    "localhost"
 ]
 
 # Application definition
@@ -151,17 +154,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # REST framework + JWT defaults (adjust as needed)
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
-    'UNAUTHENTICATED_USER': 'django.contrib.auth.models.AnonymousUser',
-    'UNAUTHENTICATED_TOKEN': None,
 }
 
 # Simple JWT settings (use env vars in production)

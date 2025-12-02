@@ -106,7 +106,7 @@ async function saveEstado(s) {
 async function addTag() {
   if (!newTag.value) return
   try {
-    const res = await api.post('mantenedor/tags/', { nombre: newTag.value })
+    const res = await api.post('mantenedor/tags/', { descripcion: newTag.value })
     tags.value.push(res.data)
     newTag.value = ''
   } catch (e) { error.value = e.message || 'Error creando tag' }
@@ -116,7 +116,7 @@ async function addAutor() {
   try {
     const res = await api.post('mantenedor/autores/', {
       nombre: newAutor.value,
-      tipo: newAutorTipo.value,
+      tipo_autor: newAutorTipo.value,
     })
     autores.value.push(res.data)
     newAutor.value = ''
