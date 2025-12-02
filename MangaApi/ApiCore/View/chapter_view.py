@@ -13,3 +13,5 @@ class ChapterViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_class = ChapterFilter
     search_fields = ['titulo']
+    ordering_fields = ['capitulo_numero', 'id']
+    ordering = ['capitulo_numero']

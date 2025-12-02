@@ -17,7 +17,7 @@ class manga(models.Model):
         ("doujinshi", "doujinshi"),
         ("comic", "comic")
     ]
-    tipo_serie = models.CharField(max_length=20, choices=tipo_serie, default='manga', null=False, db_column='MNG_TIPO_SERIE')
+    tipo_serie = models.CharField(max_length=20, choices=tipo_serie, default='manga', null=False, db_column='MNG_TIPO_SERIE', db_index=True)
     autor = models.ForeignKey(autores, on_delete=models.PROTECT, db_column='MNG_AUTOR_ID')
     fecha_lanzamiento = models.DateField(null=True, db_column='MNG_FECHA_LANZAMIENTO')
     creado_en = models.DateTimeField(auto_now_add=True, db_column='MNG_CREACION')

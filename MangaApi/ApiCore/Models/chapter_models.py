@@ -11,4 +11,7 @@ class chapter(models.Model):
     
     class Meta:
         db_table = 'apicore_chapter'
+        indexes = [
+            models.Index(fields=['manga', 'capitulo_numero'], name='chapter_manga_num_idx'),
+        ]
     
