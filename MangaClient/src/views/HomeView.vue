@@ -21,6 +21,7 @@ const switching = ref(false)
 let trendingFilterReqId = 0
 const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 
+
 function setPopularTab(v) {
   popularTab.value = v
   // Direct mapping: tab key equals trendingFilter (except 'all')
@@ -361,6 +362,13 @@ async function fetchDemografiaIds() {
   } catch (e) { /* ignore */ }
 }
 
+async function ensureDemografiaIds() {
+  // Asegurar que tengamos IDs antes de hacer requests filtrados
+  if (!demografiaIds.value.shonen || !demografiaIds.value.seinen) {
+    await fetchDemografiaIds()
+  }
+}
+
 async function resolveDemografiaDescripcion(numId) {
   if (!numId && numId !== 0) return { descripcion: '', color: '' }
   try {
@@ -381,6 +389,8 @@ async function loadTrendingFiltered() {
   const reqId = ++trendingFilterReqId
   const baseParams = { page_size: 100 }
   let params = { ...baseParams }
+  // Asegura tener demografías antes de aplicar filtro por tab
+  await ensureDemografiaIds()
   if (trendingFilter.value === 'shonen' && demografiaIds.value.shonen) params.demografia = demografiaIds.value.shonen
   else if (trendingFilter.value === 'seinen' && demografiaIds.value.seinen) params.demografia = demografiaIds.value.seinen
   else if (trendingFilter.value === 'erotico' && demografiaIds.value.erotico) params.demografia = demografiaIds.value.erotico
@@ -390,6 +400,15 @@ async function loadTrendingFiltered() {
   } else {
     // For other tabs (including 'all'), explicitly request non-erotic content
     params.erotico = false
+  }
+  // Si no contamos con demografia numérica (producción sin mantenedor), evita hacer request sin filtro
+  if ((trendingFilter.value === 'shonen' && !demografiaIds.value.shonen) || (trendingFilter.value === 'seinen' && !demografiaIds.value.seinen)) {
+    // Mantener listado cliente usando cache/local sin pedir al backend sin filtro
+    const key = trendingFilter.value
+    if (trendingCache.value[key]?.length) {
+      displayedTrending.value = trendingCache.value[key]
+    }
+    return
   }
   try {
     const r = await api.get('manga/mangas/', { params })
@@ -653,6 +672,8 @@ function isErotic(item) {
               </div>
             </div>
           </div>
+
+          
 
           
 
