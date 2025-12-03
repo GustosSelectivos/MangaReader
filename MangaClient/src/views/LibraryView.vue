@@ -119,7 +119,7 @@
               <div class="thumbnail book">
                 <img
                   class="thumbnail-img"
-                  :src="m.cover"
+                  :src="safeCover(m.cover)"
                   :alt="m.title"
                   loading="lazy"
                   decoding="async"
@@ -346,6 +346,12 @@ export default {
         dem_color,
         erotic: (raw.erotico === true) || (raw.erotic === true) || raw.tags?.includes('erotic')
       }
+    }
+    function safeCover(url){
+      const u = String(url || '').toLowerCase()
+      if (!u || !u.startsWith('http')) return '/assets/demo/Cover_MW001.webp'
+      if (u.includes('miswebtoons.uk/assets/covers')) return '/assets/demo/Cover_MW001.webp'
+      return url
     }
 
     // Build a generic srcset; if no variants exist, duplicate src as fallback

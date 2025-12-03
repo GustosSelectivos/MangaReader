@@ -61,15 +61,26 @@ export async function getMainCoverForManga(id) {
   try {
     const list1 = await listMangaCovers({ manga: id, vigente: true })
     const main = list1.find(c => c.tipo_cover === 'main') || list1[0]
-    if (main && typeof main.url_absoluta === 'string') return main.url_absoluta
-    if (main && typeof main.url_imagen === 'string') return main.url_imagen
+    if (main && typeof main.url_absoluta === 'string' && isValidCdn(main.url_absoluta)) return main.url_absoluta
+    if (main && typeof main.url_imagen === 'string' && isValidCdn(main.url_imagen)) return main.url_imagen
   } catch {}
   try {
     const listAll = await listMangaCovers({ vigente: true, page_size: 1000 })
     const forManga = listAll.filter(c => String(c.manga) === String(id))
     const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
-    if (main2 && typeof main2.url_absoluta === 'string') return main2.url_absoluta
-    if (main2 && typeof main2.url_imagen === 'string') return main2.url_imagen
+    if (main2 && typeof main2.url_absoluta === 'string' && isValidCdn(main2.url_absoluta)) return main2.url_absoluta
+    if (main2 && typeof main2.url_imagen === 'string' && isValidCdn(main2.url_imagen)) return main2.url_imagen
   } catch {}
   return null
+}
+
+// Accept only http(s) and avoid known bad domains/placeholders
+export function isValidCdn(url){
+  if (!url || typeof url !== 'string') return false
+  const u = url.trim().toLowerCase()
+  if (!u.startsWith('http://') && !u.startsWith('https://')) return false
+  // Block legacy domain causing slow misses
+  if (u.includes('miswebtoons.uk/assets/covers')) return false
+  // You can refine with your CDN host (e.g., backblazeb2 or your custom domain)
+  return true
 }

@@ -10,6 +10,9 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
+    <!-- Preconnect to legacy domain to reduce DNS/TLS cost if referenced -->
+    <link rel="dns-prefetch" href="https://www.miswebtoons.uk">
+    <link rel="preconnect" href="https://www.miswebtoons.uk" crossorigin>
     <!-- Preconnect/DNS Prefetch for image CDN (Backblaze) -->
     <!-- TODO: Replace example domain with your actual Backblaze CDN domain -->
     <link rel="preconnect" href="https://www.backblaze.com" crossorigin>
