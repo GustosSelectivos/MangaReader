@@ -20,18 +20,20 @@ async function fetchLists() {
   loading.value = true
   error.value = ''
   try {
-    const d = await api.get('mantenedor/demografias/', { params: { page_size: 200 } })
+    // usar servicios estáticos
+    const { listDemografias, listTags, listAutores, listEstados, createDemografia, createTag, createAutor, createEstado } = await import('@/services/mantenedorService')
+    const dList = await listDemografias({ page_size: 200 })
     demografias.value = Array.isArray(d.data) ? d.data : (d.data?.results || [])
-    const t = await api.get('mantenedor/tags/', { params: { page_size: 200 } })
+    const tList = await listTags({ page_size: 200 })
     tags.value = Array.isArray(t.data) ? t.data : (t.data?.results || [])
     // Fetch autores (authors)
     try {
-      const a = await api.get('mantenedor/autores/', { params: { page_size: 200 } })
+      const aList = await listAutores({ page_size: 200 })
       autores.value = Array.isArray(a.data) ? a.data : (a.data?.results || [])
     } catch (e) {}
     // Fetch estados (statuses)
     try {
-      const s = await api.get('mantenedor/estados/', { params: { page_size: 200 } })
+      const sList = await listEstados({ page_size: 200 })
       estados.value = Array.isArray(s.data) ? s.data : (s.data?.results || [])
     } catch (e) {}
   } catch (e) {
@@ -46,7 +48,7 @@ async function addDemografia() {
   try {
     const payload = { descripcion: newDemografia.value }
     if (newDemografiaColor.value) payload.color = newDemografiaColor.value
-    const res = await api.post('mantenedor/demografias/', payload)
+    const res = await createDemografia(payload)
     demografias.value.push(res.data)
     newDemografia.value = ''
     newDemografiaColor.value = ''
@@ -106,7 +108,7 @@ async function saveEstado(s) {
 async function addTag() {
   if (!newTag.value) return
   try {
-    const res = await api.post('mantenedor/tags/', { descripcion: newTag.value })
+    const res = await createTag({ descripcion: newTag.value })
     tags.value.push(res.data)
     newTag.value = ''
   } catch (e) { error.value = e.message || 'Error creando tag' }
@@ -114,7 +116,7 @@ async function addTag() {
 async function addAutor() {
   if (!newAutor.value || !newAutorTipo.value) return
   try {
-    const res = await api.post('mantenedor/autores/', {
+    const res = await createAutor({
       nombre: newAutor.value,
       tipo_autor: newAutorTipo.value,
     })
@@ -126,7 +128,7 @@ async function addAutor() {
 async function addEstado() {
   if (!newEstado.value) return
   try {
-    const res = await api.post('mantenedor/estados/', { descripcion: newEstado.value })
+    const res = await createEstado({ descripcion: newEstado.value })
     estados.value.push(res.data)
     newEstado.value = ''
   } catch (e) { error.value = e.message || 'Error creando estado' }

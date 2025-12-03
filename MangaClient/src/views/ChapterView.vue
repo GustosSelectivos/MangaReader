@@ -21,6 +21,8 @@
 import MangaReader from '../components/MangaReader.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getChapter, listChapters } from '@/services/chapterService'
+import { incrementMangaView } from '@/services/mangaService'
 
 const props = defineProps({
   chapterId: { type: [String, Number], required: true }
@@ -43,41 +45,22 @@ function deriveNeighbors() {
   nextChapterId.value = idx >= 0 && idx < chaptersList.value.length - 1 ? chaptersList.value[idx + 1].id : null
 }
 
-async function incrementMangaView(mid) {
-  if (!mid) return
-  try {
-    const api = (await import('@/services/api')).default
-    await api.post(`manga/mangas/${mid}/increment-view/`).catch(() => {})
-  } catch (e) { /* ignore */ }
-}
+// increment handled by mangaService
 
-async function fetchChapterDetail(id) {
-  const api = (await import('@/services/api')).default
-  const candidates = [`chapters/chapters/${id}/`, `chapters/chapters/?id=${id}`]
-  for (const ep of candidates) {
-    try {
-      const res = await api.get(ep)
-      if (res && res.data && (res.data.id || res.data.titulo || res.data.title)) return res.data
-    } catch (e) { /* try next */ }
-  }
-  return null
-}
+async function fetchChapterDetail(id) { return await getChapter(id) }
 
-async function fetchChapterList(params) {
-  const api = (await import('@/services/api')).default
-  try {
-    const res = await api.get('chapters/chapters/', { params })
-    return Array.isArray(res.data) ? res.data : (res.data?.results || [])
-  } catch (e) { return [] }
-}
+async function fetchChapterList(params) { return await listChapters(params) }
 
 async function load() {
   loading.value = true
   try {
     if (import.meta?.env?.DEV) {
-      const r = await fetch('/mock/chapters_universal.json')
-      if (!r.ok) throw new Error('Mock not found')
-      const list = await r.json()
+      const apiClient = (await import('@/services/api')).default
+      let list = []
+      try {
+        const r = await apiClient.get('/mock/chapters_universal.json')
+        list = r?.data || []
+      } catch (e) { throw new Error('Mock not found') }
       const found = Array.isArray(list) ? list.find(c => String(c.id) === String(props.chapterId)) || list[0] : list
       if (found) {
         chapter.value = found

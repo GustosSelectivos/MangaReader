@@ -5,7 +5,7 @@ import NavBar from './components/NavBar.vue';
 </script>
 
 <template>
-  <div id="app">
+  <div class="app-root">
     <NavBar />
 
     <main role="main" class="container-fluid">
@@ -30,11 +30,11 @@ import NavBar from './components/NavBar.vue';
 
 <style scoped>
 /* Extend root to full viewport */
-#app { display:flex; flex-direction:column; width:100%; }
-#app > main.container-fluid { flex:1 1 auto; padding:0; display:flex; flex-direction:column; justify-content:flex-start; min-height:0; overflow-y:auto; -webkit-overflow-scrolling: touch; }
+#app, .app-root { display:flex; flex-direction:column; width:100%; }
+.app-root > main.container-fluid { flex:1 1 auto; padding:0; display:flex; flex-direction:column; justify-content:flex-start; min-height:0; overflow-y:auto; -webkit-overflow-scrolling: touch; }
 /* Center only routed view containers; let them size to max-width internally */
-#app > main.container-fluid > .home-view { flex:0 0 auto; width:100%; max-width:1600px; margin:0 auto; }
-@media (min-width: 1700px) { #app > main.container-fluid > .home-view { max-width:1700px; } }
+.app-root > main.container-fluid > .home-view { flex:0 0 auto; width:100%; max-width:1600px; margin:0 auto; }
+@media (min-width: 1700px) { .app-root > main.container-fluid > .home-view { max-width:1700px; } }
 html, body { height:100%; width:100%; }
 @media (max-width: 576px) { #app > main.container-fluid { overflow-y:auto; -webkit-overflow-scrolling: touch; } }
 </style>

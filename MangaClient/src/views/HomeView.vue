@@ -21,6 +21,30 @@ const switching = ref(false)
 let trendingFilterReqId = 0
 const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 
+// --- Auth state for access control ---
+const isAuthenticated = ref(false)
+const isSuperuser = ref(false)
+
+async function fetchAuthState() {
+  // Sin endpoint /me: deducir por presencia de token (SimpleJWT)
+  try {
+    const storage = (typeof window !== 'undefined') ? window.localStorage : null
+    const access = storage ? (storage.getItem('access') || storage.getItem('token') || storage.getItem('jwt')) : null
+    // Revisar también cookies de sesión (autenticación por SessionAuth)
+    let hasSession = false
+    if (typeof document !== 'undefined') {
+      const ck = document.cookie || ''
+      hasSession = /(^|;\s)sessionid=/.test(ck) || /(^|;\s)access=/.test(ck) || /(^|;\s)jwt=/.test(ck)
+    }
+    isAuthenticated.value = Boolean(access || hasSession)
+    // Sin endpoint de usuario, no podemos saber superuser; dejar false por defecto
+    isSuperuser.value = false
+  } catch (e) {
+    isAuthenticated.value = false
+    isSuperuser.value = false
+  }
+}
+
 
 function setPopularTab(v) {
   popularTab.value = v
@@ -190,12 +214,14 @@ async function loadData() {
       // Prefer the universal mangas mock, fallback to universal chapters if present
       let mockRaw = null
       try {
-        const r = await fetch('/mock/mangas_universal.json')
-        if (r.ok) mockRaw = await r.json()
+        const r = await api.get('/mock/mangas_universal.json')
+        mockRaw = r?.data || null
       } catch (e) {}
       if (!mockRaw) {
-        const r2 = await fetch('/mock/chapters_universal.json')
-        if (r2.ok) mockRaw = await r2.json()
+        try {
+          const r2 = await api.get('/mock/chapters_universal.json')
+          mockRaw = r2?.data || null
+        } catch (e2) {}
       }
       if (!mockRaw) throw new Error('No mock data available')
       // If mockRaw is chapters list, map to simple manga-like objects
@@ -466,6 +492,7 @@ async function loadTrendingFiltered() {
 onMounted(async () => {
   await fetchDemografiaIds()
   loadData()
+  fetchAuthState()
 })
 
 // Watch the select filter
@@ -570,7 +597,7 @@ function isErotic(item) {
                 <a href="#" @click.prevent="setPopularTab('all')" :class="['nav-item nav-link', { active: popularTab === 'all' }]">All</a>
                 <a href="#" @click.prevent="setPopularTab('shonen')" :class="['nav-item nav-link', { active: popularTab === 'shonen' }]">Shonen</a>
                 <a href="#" @click.prevent="setPopularTab('seinen')" :class="['nav-item nav-link', { active: popularTab === 'seinen' }]">Seinen</a>
-                <a href="#" @click.prevent="setPopularTab('erotico')" :class="['nav-item nav-link', { active: popularTab === 'erotico' }]">Erótico</a>
+                <a v-if="isAuthenticated" href="#" @click.prevent="setPopularTab('erotico')" :class="['nav-item nav-link', { active: popularTab === 'erotico' }]">Erótico</a>
               </nav>
 
               <div class="tab-content" id="pills-tabContent" :key="popularTab">
@@ -638,7 +665,7 @@ function isErotic(item) {
                     </div>
                   </div>
                 </div>
-                <div v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico">
+                <div v-if="isAuthenticated" v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
@@ -661,11 +688,14 @@ function isErotic(item) {
             <div class="col">
               <h2 class="mt-3">Series Disponibles</h2>
               <div class="cards-grid cards-grid--trending">
-                <div v-for="item in (popularTab === 'erotico' ? displayedTrending.filter(i => isErotic(i)) : displayedTrending)" :key="`tr-${item.id}`" class="card-item">
+                <div v-for="item in (popularTab === 'erotico' 
+                    ? displayedTrending.filter(i => isErotic(i)) 
+                    : (isAuthenticated ? displayedTrending : displayedTrending.filter(i => !isErotic(i))))" 
+                  :key="`tr-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.id}`" class="card-link">
                     <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
                       <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
-                      <div class="type-bubble">{{ originLabel(item) }}<span v-if="isErotic(item)" class="age-18">+18</span></div>
+                      <div class="type-bubble">{{ originLabel(item) }}<span v-if="isAuthenticated && isErotic(item)" class="age-18">+18</span></div>
                       <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
                     </div>
                   </a>
@@ -685,7 +715,7 @@ function isErotic(item) {
 
       <!-- Sidebar -->
       <aside class="home-sidebar">
-          <div class="text-center mb-3">
+          <div v-if="isAuthenticated && isSuperuser" class="text-center mb-3">
             <a href="/dev/upload" class="btn btn-primary btn-lg w-100"><i class="fas fa-upload"></i> Subir capítulo</a>
           </div>
 

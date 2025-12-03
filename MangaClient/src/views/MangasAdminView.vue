@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import api from '@/services/api'
+import { listEstados, listDemografias, listAutores, listTags } from '@/services/mantenedorService'
+import { listMangasBasic, createManga, listAltTitulos, listCovers, listAutoresRel, listTagsRel, createAltTitulo, createCover, createAutorRel, createTagRel } from '@/services/mangaAdminService'
 
 // Vista: lista, búsqueda o formulario (por defecto: lista)
 const currentView = ref('list') // 'list' | 'search' | 'form'
@@ -135,15 +136,15 @@ const rolOptions = [
 async function loadCatalogs() {
   try {
     const [estadosRes, demosRes, autoresRes, tagsRes] = await Promise.all([
-      api.get('mantenedor/estados/'),
-      api.get('mantenedor/demografias/'),
-      api.get('mantenedor/autores/'),
-      api.get('mantenedor/tags/')
+      listEstados({ page_size: 1000 }),
+      listDemografias({ page_size: 1000 }),
+      listAutores({ page_size: 1000 }),
+      listTags({ page_size: 1000 })
     ])
-    estados.value = estadosRes.data.results || estadosRes.data || []
-    demografias.value = demosRes.data.results || demosRes.data || []
-    autores.value = autoresRes.data.results || autoresRes.data || []
-    allTags.value = tagsRes.data.results || tagsRes.data || []
+    estados.value = estadosRes || []
+    demografias.value = demosRes || []
+    autores.value = autoresRes || []
+    allTags.value = tagsRes || []
     catalogsLoaded.value = true
     // Tras cargar catálogos, asegurar que los selects queden en el valor del manga
     ensureSelectDefaults()
@@ -156,8 +157,7 @@ async function fetchMangas() {
   loading.value = true
   error.value = ''
   try {
-    const r = await api.get('manga/mangas/', { params: { page_size: 200 } })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+    const list = await listMangasBasic({ page_size: 200 })
     mangas.value = list
     // Top 20 más visitados por defecto (ordenar por "vistas")
     const sorted = [...list].sort((a, b) => Number(b.vistas || 0) - Number(a.vistas || 0))
@@ -257,84 +257,49 @@ async function searchMangas() {
     searching.value = false
   }
 }
-
-// Cargar relaciones del manga seleccionado
+// Cargar datos relacionados del manga seleccionado
 async function loadRelatedForManga(mangaId) {
-  // Títulos alternativos
   try {
-    const r = await api.get('manga/manga-alt-titulos/', { params: { manga: mangaId, page_size: 1000 } })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    titulosAlternativos.value = list.map(x => ({
-      id: x.id,
-      titulo_alternativo: x.titulo_alternativo || '',
-      codigo_lenguaje: x.codigo_lenguaje || 'es',
-      vigente: x.vigente !== false
-    }))
-  } catch (e) { titulosAlternativos.value = [] }
-
-  // Covers
+    const alts = await listAltTitulos({ manga: mangaId, page_size: 1000 })
+    titulosAlternativos.value = alts.map(x => ({ titulo: x.titulo || x.title || '', codigo_lenguaje: x.codigo_lenguaje || 'es', vigente: x.vigente !== false }))
+  } catch { titulosAlternativos.value = [] }
   try {
-    const r = await api.get('manga/manga-covers/', { params: { manga: mangaId, page_size: 1000 } })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    covers.value = list.map(x => ({
-      id: x.id,
-      url_imagen: x.url_imagen || '',
-      tipo_cover: x.tipo_cover || 'main',
-      vigente: x.vigente !== false
-    }))
+    const cvs = await listCovers({ manga: mangaId, page_size: 1000 })
+    covers.value = cvs.map(x => ({ url_imagen: x.url_imagen || x.url || '', tipo_cover: x.tipo_cover || 'main', vigente: x.vigente !== false }))
     updatePreview()
-  } catch (e) { covers.value = [] }
-
-  // Autores adicionales (relación manga_autor)
+  } catch { covers.value = [] }
   try {
-    const r = await api.get('manga/manga-autores/', { params: { manga: mangaId, page_size: 1000 } })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    autoresExtra.value = list.map(x => ({
-      id: x.id,
-      autor_id: x.autor?.id || x.autor || null,
-      rol: x.rol || 'author',
-      vigente: x.vigente !== false
-    }))
-  } catch (e) { autoresExtra.value = [] }
-
-  // Tags seleccionados
+    const auts = await listAutoresRel({ manga: mangaId, page_size: 1000 })
+    autoresExtra.value = auts.map(x => ({ autor_id: x.autor?.id || x.autor || null, rol: x.rol || 'author', vigente: x.vigente !== false }))
+  } catch { autoresExtra.value = [] }
   try {
-    const r = await api.get('manga/manga-tags/', { params: { manga: mangaId, page_size: 1000 } })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    existingTagIds.value = list.map(x => Number(x.tag?.id || x.tag)).filter(Boolean)
+    const tgs = await listTagsRel({ manga: mangaId, page_size: 1000 })
+    existingTagIds.value = tgs.map(x => Number(x.tag?.id || x.tag)).filter(Boolean)
     tagsSeleccionados.value = [...existingTagIds.value]
-  } catch (e) {
+  } catch {
     existingTagIds.value = []
     tagsSeleccionados.value = []
   }
 }
 
-// Select serie from search results
+// Seleccionar serie desde resultados y preparar formulario
 async function selectSerie(serie) {
-  // Si los catálogos aún no están listos, cargarlos primero para que existan las opciones al bindear
-  if (!catalogsLoaded.value) {
-    await loadCatalogs()
-  }
+  if (!catalogsLoaded.value) await loadCatalogs()
   selectedSerie.value = serie
-  editingManga.value = serie
   currentView.value = 'form'
-  
   mangaForm.value = {
     codigo: serie.codigo || '',
     titulo: serie.titulo || '',
     sinopsis: serie.sinopsis || '',
     estado_id: Number(serie.estado?.id ?? serie.estado ?? serie.estado_id ?? '') || null,
     demografia_id: Number(serie.demografia?.id ?? serie.demografia ?? serie.demografia_id ?? '') || null,
-    tipo_serie: serie.tipo_serie || 'manga',
+    tipo_serie: String(serie.tipo_serie || 'manga'),
     autor_id: Number(serie.autor?.id ?? serie.autor ?? serie.autor_id ?? '') || null,
     fecha_lanzamiento: serie.fecha_lanzamiento || '',
     erotico: serie.erotico || false,
     vigente: serie.vigente !== false
   }
-  
-  // Asegurar que los selects muestren por defecto el valor del manga
   ensureSelectDefaults()
-
   await loadRelatedForManga(serie.id)
 }
 

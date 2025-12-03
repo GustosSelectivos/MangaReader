@@ -116,7 +116,17 @@
         <div v-else class="cards-grid">
           <div v-for="m in mangas" :key="m.id" class="card-item">
             <router-link :to="`/library/manga/${m.id}`" class="card-link">
-              <div class="thumbnail book" :style="{ backgroundImage: `url(${m.cover})` }">
+              <div class="thumbnail book">
+                <img
+                  class="thumbnail-img"
+                  :src="m.cover"
+                  :alt="m.title"
+                  loading="lazy"
+                  decoding="async"
+                  :fetchpriority="indexFetchPriority(m)"
+                  :srcset="buildSrcset(m.cover)"
+                  :sizes="thumbnailSizes"
+                />
                 <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="m.title">{{ m.title }}</h4></div>
                 <div class="type-bubble">{{ originLabel(m) }}<span v-if="isErotic(m)" class="age-18">+18</span></div>
                 <div class="thumbnail-type-bar" :class="typeClass(m)" :style="{ '--type-bar-color': m.dem_color || undefined }">{{ displayType(m) }}</div>
@@ -141,6 +151,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import cache from '@/services/cache'
+import { listMangas } from '@/services/mangaService'
+import { fetchCoverById, getMainCoverForManga } from '@/services/mangaService'
+import { resolveDemografiaDescripcion } from '@/services/mantenedorService'
 
 export default {
   name: 'LibraryView',
@@ -232,25 +245,7 @@ export default {
       try {
         const api = await import('@/services/api')
         let res
-        try {
-          const k = cache.keyFrom('manga/mangas/', params.value)
-          const c = cache.get(k)
-          if (c) {
-            res = { data: c }
-          } else {
-            res = await api.default.get('manga/mangas/', { params: params.value })
-            const raw = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.mangas || [])
-            if (Array.isArray(raw)) cache.set(k, raw, 5 * 60 * 1000)
-          }
-        } catch (e) {
-          try { res = await api.default.get('mangas/', { params: params.value }) } catch (e2) {}
-        }
-        let data = res ? res.data : []
-        if (!Array.isArray(data)) {
-          if (Array.isArray(data.results)) data = data.results
-          else if (Array.isArray(data.mangas)) data = data.mangas
-          else data = []
-        }
+        const data = await listMangas(params.value)
         lastFetchCount.value = Array.isArray(data) ? data.length : 0
         const items = Array.isArray(data) ? await Promise.all(data.map(d => normalizeItemAsync(d))) : []
         mangas.value = page.value > 1 ? mangas.value.concat(items) : (items.length ? items : demoSeed())
@@ -268,32 +263,12 @@ export default {
       error.value = null
       try {
         mangas.value = []
-        const api = await import('@/services/api')
         let currentPage = 1
         const maxPages = 200
         const accumulated = []
         while (currentPage <= maxPages) {
           const pParams = { ...params.value, page: currentPage }
-          let res
-          try {
-            const k = cache.keyFrom('manga/mangas/', pParams)
-            const c = cache.get(k)
-            if (c) {
-              res = { data: c }
-            } else {
-              res = await api.default.get('manga/mangas/', { params: pParams })
-              const raw = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.mangas || [])
-              if (Array.isArray(raw)) cache.set(k, raw, 5 * 60 * 1000)
-            }
-          } catch (e) {
-            try { res = await api.default.get('mangas/', { params: pParams }) } catch (e2) {}
-          }
-          let chunk = res ? res.data : []
-          if (!Array.isArray(chunk)) {
-            if (Array.isArray(chunk.results)) chunk = chunk.results
-            else if (Array.isArray(chunk.mangas)) chunk = chunk.mangas
-            else chunk = []
-          }
+          const chunk = await listMangas(pParams)
             const norm = await Promise.all(chunk.map(c => normalizeItemAsync(c)))
             accumulated.push(...norm)
           if (chunk.length < pageSize.value || !chunk.length) break
@@ -320,52 +295,18 @@ export default {
     async function fetchCoverById(possibleId) {
       const cid = Number(possibleId)
       if (!cid || Number.isNaN(cid)) return null
-      try {
-        const api = await import('@/services/api')
-        const r = await api.default.get(`manga/manga-covers/${cid}/`)
-        const obj = r?.data || {}
-        if (typeof obj.url_absoluta === 'string') return obj.url_absoluta
-        if (typeof obj.url_imagen === 'string') return obj.url_imagen
-      } catch (e) {}
+      try { return await fetchCoverById(cid) } catch (e) {}
       return null
     }
 
     async function fetchMainCoverForManga(id) {
-      try {
-        const api = await import('@/services/api')
-        const r1 = await api.default.get('manga/manga-covers/', { params: { manga: id, vigente: true } })
-        const list1 = Array.isArray(r1.data) ? r1.data : (r1.data?.results || [])
-        const main = list1.find(c => c.tipo_cover === 'main') || list1[0]
-        if (main && typeof main.url_absoluta === 'string') return main.url_absoluta
-        if (main && typeof main.url_imagen === 'string') return main.url_imagen
-      } catch (e) {}
-      try {
-        const api = await import('@/services/api')
-        const rAll = await api.default.get('manga/manga-covers/', { params: { vigente: true, page_size: 1000 } })
-        const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
-        const forManga = listAll.filter(c => String(c.manga) === String(id))
-        const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
-        if (main2 && typeof main2.url_absoluta === 'string') return main2.url_absoluta
-        if (main2 && typeof main2.url_imagen === 'string') return main2.url_imagen
-      } catch (e) {}
+      try { return await getMainCoverForManga(id) } catch (e) {}
       return null
     }
 
     async function resolveDemografiaDescripcion(numId) {
       if (!numId && numId !== 0) return { descripcion: '', color: '' }
-      try {
-        const api = await import('@/services/api')
-        const r = await api.default.get(`mantenedor/demografias/${numId}/`)
-        const d = r?.data || {}
-        return { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
-      } catch (e) {}
-      try {
-        const api = await import('@/services/api')
-        const rl = await api.default.get('mantenedor/demografias/', { params: { page_size: 1000 } })
-        const list = Array.isArray(rl.data) ? rl.data : (rl.data?.results || [])
-        const found = list.find(x => String(x.id) === String(numId)) || {}
-        return { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
-      } catch (e) {}
+      try { return await resolveDemografiaDescripcion(numId) } catch (e) {}
       return { descripcion: '', color: '' }
     }
 
@@ -405,6 +346,20 @@ export default {
         dem_color,
         erotic: (raw.erotico === true) || (raw.erotic === true) || raw.tags?.includes('erotic')
       }
+    }
+
+    // Build a generic srcset; if no variants exist, duplicate src as fallback
+    function buildSrcset(src) {
+      if (!src || typeof src !== 'string') return ''
+      // If your CDN provides variants, replace with actual variant URLs
+      // e.g., `${base}?w=320 320w, ${base}?w=640 640w, ...`
+      return `${src} 320w, ${src} 640w, ${src} 960w, ${src} 1280w`
+    }
+    const thumbnailSizes = '(max-width: 576px) 33vw, (max-width: 960px) 25vw, 200px'
+    function indexFetchPriority(m) {
+      // prioridad alta para primeras 6 portadas visibles; resto auto
+      // Nota: el v-for no da índice aquí; podrías usar key/orden si fuese necesario
+      return 'auto'
     }
 
     function resolveCover(raw) {
@@ -640,6 +595,7 @@ export default {
 .card-link { text-decoration:none; display:block; }
 
 .thumbnail.book { background-size:cover; background-position:center; aspect-ratio:2/3; min-height:220px; position:relative; border-radius:6px; overflow:hidden; color:#fff; display:block; }
+.thumbnail-img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
 .thumbnail-title.top-strip { position:absolute; top:0; left:0; right:0; background:rgba(0,0,0,0.65); padding:4px 6px; }
 .thumbnail-title.top-strip h4 { margin:0; font-size:14px; color:#fff; width:100%; line-height:1.15; }
 @media (max-width:576px){ .thumbnail-title.top-strip h4 { font-size:12px; } }

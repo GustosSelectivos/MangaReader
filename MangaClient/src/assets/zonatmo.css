@@ -19,6 +19,9 @@
   --ztmo-soft-overlay:rgba(0,0,0,0.02);
 }
 body{background:var(--ztmo-bg); color:var(--ztmo-text); font-family: Inter, Roboto, system-ui, Arial; transition:background .25s,color .25s;}
+@supports (text-size-adjust: 100%){
+  html{ text-size-adjust: 100%; }
+}
 .container-fluid{max-width:1200px;margin:0 auto;padding:18px}
 .site-header .navbar{background:linear-gradient(90deg,var(--ztmo-soft-overlay),transparent); border-bottom:1px solid var(--ztmo-border); transition:background .25s,border-color .25s;}
 .navbar-brand{font-weight:700;color:var(--ztmo-text); font-size:20px}

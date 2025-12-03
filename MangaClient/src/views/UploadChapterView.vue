@@ -66,9 +66,12 @@ async function fetchMangas() {
   try {
     let r
     try {
-      r = await api.get('manga/mangas/', { params: { page_size: 500, ordering: '-id' } })
+      // static service import
+      // eslint-disable-next-line import/no-unresolved
+      const { listMangas } = await import('@/services/mangaService')
+      const data = await listMangas({ page_size: 500, ordering: '-id' })
     } catch (e) {
-      r = await api.get('mangas/', { params: { page_size: 500, ordering: '-id' } })
+      r = { data: data || [] }
     }
     const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
     // Map minimal info and sort desc by id
@@ -101,11 +104,13 @@ async function fetchChaptersForManga(mangaIdVal) {
   selectedChapterId.value = ''
   try {
     // List chapters for manga
-    const r = await api.get('chapters/chapters/', { params: { manga: mangaIdVal, page_size: 500, ordering: '-id' } })
+    // eslint-disable-next-line import/no-unresolved
+    const { listChapters } = await import('@/services/chapterService')
+    const list = await listChapters({ manga: mangaIdVal, page_size: 500, ordering: '-id' })
     chapters.value = Array.isArray(r.data) ? r.data : (r.data?.results || [])
   } catch (e) {
     try {
-      const r2 = await api.get('chapters/', { params: { manga: mangaIdVal, page_size: 500, ordering: '-id' } })
+      const r2 = { data: list }
       chapters.value = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
     } catch (e2) { /* ignore */ }
   } finally {
@@ -117,7 +122,9 @@ async function loadSelectedChapter() {
   existing.value = null
   if (!selectedChapterId.value) return
   try {
-    const r = await api.get(`chapters/chapters/${selectedChapterId.value}/`)
+    // eslint-disable-next-line import/no-unresolved
+    const { getChapter } = await import('@/services/chapterService')
+    const data = await getChapter(selectedChapterId.value)
     const ch = r?.data
     existing.value = ch || null
     // Prefill form from existing chapter
@@ -136,7 +143,7 @@ async function loadSelectedChapter() {
   } catch (e) {
     // try alternate path
     try {
-      const r2 = await api.get(`chapters/${selectedChapterId.value}/`)
+      const r2 = { data }
       existing.value = r2?.data || null
     } catch (e2) { existing.value = null }
   }
@@ -162,10 +169,13 @@ async function submit() {
     try {
       // Correct endpoint path: included at /api/chapters/ + router.register('chapters', ...)
       // Final path: /api/chapters/chapters/
-      res = await api.post('chapters/chapters/', payload)
+      // eslint-disable-next-line import/no-unresolved
+      const { createChapter } = await import('@/services/chapterService')
+      res = { data: await createChapter(payload) }
     } catch (e) {
       // Fallback: try root /api/chapters/ if server configured differently
-      res = await api.post('chapters/', payload)
+      // reused above
+      res = { data: await createChapter(payload) }
     }
     message.value = 'Capítulo creado y subido correctamente.'
     // Limpia el formulario

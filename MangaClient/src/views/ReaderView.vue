@@ -6,7 +6,7 @@
           <div class="col-12 col-md-3 text-center">
             <h4 class="book-type">MANGA</h4>
             <div class="element-image my-2">
-              <img class="book-thumbnail" :src="cover" alt="cover" />
+              <img class="book-thumbnail" :src="cover" alt="cover" loading="lazy" decoding="async" fetchpriority="high" />
             </div>
             <h1 class="element-title">{{ mangaTitle }} <small v-if="year">( {{ year }} )</small></h1>
             <h2 class="element-subtitle">{{ mangaTitle }}</h2>
@@ -88,6 +88,9 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { listChapters } from '@/services/chapterService'
+import { getManga, listMangaCovers } from '@/services/mangaService'
+import api from '@/services/api'
 
 export default {
   name: 'ReaderView',
@@ -159,9 +162,10 @@ export default {
         let mockLoaded = false
         if (isDev) {
           try {
-            const resp = await fetch('/mock/chapters_universal.json')
-            if (resp.ok && (resp.headers.get('content-type') || '').includes('application/json')) {
-              chs = await resp.json()
+            const resp = await api.get('/mock/chapters_universal.json')
+            const data = resp?.data
+            if (data) {
+              chs = data
               mockLoaded = Array.isArray(chs) && chs.length > 0
             }
           } catch (e) { /* ignore */ }
@@ -169,32 +173,21 @@ export default {
 
         // If mock not loaded (or not dev), use API
         if (!mockLoaded) {
-          apiClient = (await import('@/services/api')).default
-          // Manga detail
-            let m = {}
-            for (const ep of [`manga/mangas/${mangaIdVal.value}/`, `mangas/${mangaIdVal.value}/`, `manga/${mangaIdVal.value}/`]) {
-              try { const r = await apiClient.get(ep); if (r?.data) { m = r.data; break } } catch (e) {}
-            }
-            mangaTitle.value = m.titulo || m.title || mangaTitle.value
-            cover.value = m.cover || m.cover_image || m.url_imagen || cover.value
-            description.value = m.sinopsis || m.description || description.value
-            if (!cover.value || typeof cover.value !== 'string' || cover.value.trim() === '' || !cover.value.startsWith('http')) {
-              const byId = await fetchCoverById(apiClient, m.cover_id || m.main_cover_id || m.cover)
-              cover.value = byId || (await fetchCoverForManga(apiClient, mangaIdVal.value)) || cover.value
-            }
-          // Chapters
-          const chapterCandidates = [
-            { url: 'chapters/chapters/', params: { manga: mangaIdVal.value, page_size: 1000 } },
-            { url: `chapters/chapters/?manga=${mangaIdVal.value}&page_size=1000`, params: {} },
-            { url: 'chapters/', params: { manga: mangaIdVal.value, page_size: 1000 } }
-          ]
-          for (const c of chapterCandidates) {
-            try {
-              const r = await apiClient.get(c.url, { params: c.params })
-              const arr = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-              if (Array.isArray(arr) && arr.length) { chs = arr; break }
-            } catch (e) {}
+          apiClient = api
+          // Cargar manga y capítulos en paralelo
+          const [m, chList] = await Promise.all([
+            getManga(mangaIdVal.value),
+            listChapters({ manga: mangaIdVal.value, page_size: 1000 })
+          ])
+          const mData = m || {}
+          mangaTitle.value = mData.titulo || mData.title || mangaTitle.value
+          cover.value = mData.cover || mData.cover_image || mData.url_imagen || cover.value
+          description.value = mData.sinopsis || mData.description || description.value
+          if (!cover.value || typeof cover.value !== 'string' || cover.value.trim() === '' || !cover.value.startsWith('http')) {
+            const byId = await fetchCoverById(apiClient, mData.cover_id || mData.main_cover_id || mData.cover)
+            cover.value = byId || (await fetchCoverForManga(apiClient, mangaIdVal.value)) || cover.value
           }
+          chs = Array.isArray(chList) ? chList : []
         } else if (mangaIdVal.value && Array.isArray(chs)) {
           chs = chs.filter(c => String(c.manga) === String(mangaIdVal.value))
         }
