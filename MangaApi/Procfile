@@ -1,1 +1,1 @@
-web: gunicorn MangaApi.wsgi:application --bind 0.0.0.0:$PORT
+web: gunicorn MangaApi.wsgi:application --workers 3 --threads 2 --timeout 60 --log-level info --bind 0.0.0.0:$PORT

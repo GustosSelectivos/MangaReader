@@ -150,6 +150,31 @@ export default {
       return null
     }
 
+    // Caches locales para deduplicar requests de covers (por ID y por manga)
+    const _readerCoverIdPromises = new Map()
+    const _readerCoverIdResults = new Map()
+    const _readerMainCoverPromises = new Map()
+    const _readerMainCoverResults = new Map()
+
+    function getCoverByIdCachedClient(apiClient, id) {
+      const cid = Number(id)
+      if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
+      if (_readerCoverIdResults.has(cid)) return Promise.resolve(_readerCoverIdResults.get(cid))
+      if (_readerCoverIdPromises.has(cid)) return _readerCoverIdPromises.get(cid)
+      const p = fetchCoverById(apiClient, cid).then(url => { _readerCoverIdResults.set(cid, url || null); _readerCoverIdPromises.delete(cid); return url || null })
+      _readerCoverIdPromises.set(cid, p)
+      return p
+    }
+    function getMainCoverCachedClient(apiClient, mangaId) {
+      const mid = String(mangaId)
+      if (!mid) return Promise.resolve(null)
+      if (_readerMainCoverResults.has(mid)) return Promise.resolve(_readerMainCoverResults.get(mid))
+      if (_readerMainCoverPromises.has(mid)) return _readerMainCoverPromises.get(mid)
+      const p = fetchCoverForManga(apiClient, mid).then(url => { _readerMainCoverResults.set(mid, url || null); _readerMainCoverPromises.delete(mid); return url || null })
+      _readerMainCoverPromises.set(mid, p)
+      return p
+    }
+
     async function load() {
       loading.value = true
       error.value = null
@@ -184,8 +209,8 @@ export default {
           cover.value = mData.cover || mData.cover_image || mData.url_imagen || cover.value
           description.value = mData.sinopsis || mData.description || description.value
           if (!cover.value || typeof cover.value !== 'string' || cover.value.trim() === '' || !cover.value.startsWith('http')) {
-            const byId = await fetchCoverById(apiClient, mData.cover_id || mData.main_cover_id || mData.cover)
-            cover.value = byId || (await fetchCoverForManga(apiClient, mangaIdVal.value)) || cover.value
+            const byId = await getCoverByIdCachedClient(apiClient, mData.cover_id || mData.main_cover_id || mData.cover)
+            cover.value = byId || (await getMainCoverCachedClient(apiClient, mangaIdVal.value)) || cover.value
           }
           chs = Array.isArray(chList) ? chList : []
         } else if (mangaIdVal.value && Array.isArray(chs)) {
@@ -209,7 +234,7 @@ export default {
           if (!mangaTitle.value) mangaTitle.value = chapters.value[0].raw?.manga_titulo || chapters.value[0].raw?.manga_title || mangaTitle.value
           if (!cover.value) {
             const client = apiClient || (await import('@/services/api')).default
-            cover.value = (await fetchCoverForManga(client, mangaIdVal.value)) || cover.value
+            cover.value = (await getMainCoverCachedClient(client, mangaIdVal.value)) || cover.value
           }
         } else {
           pages.value = pageSizeDemo

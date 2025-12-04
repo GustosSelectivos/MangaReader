@@ -296,16 +296,35 @@ export default {
       fetchAllPages()
     }
 
-    async function fetchCoverById(possibleId) {
-      const cid = Number(possibleId)
-      if (!cid || Number.isNaN(cid)) return null
-      try { return await fetchCoverById(cid) } catch (e) {}
-      return null
-    }
+    // Caches locales para deduplicar requests de portadas
+    const _libCoverIdPromises = new Map()
+    const _libCoverIdResults = new Map()
+    const _libMainCoverPromises = new Map()
+    const _libMainCoverResults = new Map()
 
-    async function fetchMainCoverForManga(id) {
-      try { return await getMainCoverForManga(id) } catch (e) {}
-      return null
+    async function fetchCoverByIdRaw(cid) {
+      try { return await fetchCoverById(cid) } catch (e) { return null }
+    }
+    function getCoverByIdCached(id) {
+      const cid = Number(id)
+      if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
+      if (_libCoverIdResults.has(cid)) return Promise.resolve(_libCoverIdResults.get(cid))
+      if (_libCoverIdPromises.has(cid)) return _libCoverIdPromises.get(cid)
+      const p = fetchCoverByIdRaw(cid).then(url => { _libCoverIdResults.set(cid, url || null); _libCoverIdPromises.delete(cid); return url || null })
+      _libCoverIdPromises.set(cid, p)
+      return p
+    }
+    async function fetchMainCoverRaw(id) {
+      try { return await getMainCoverForManga(id) } catch (e) { return null }
+    }
+    function getMainCoverCached(mangaId) {
+      const mid = String(mangaId)
+      if (!mid) return Promise.resolve(null)
+      if (_libMainCoverResults.has(mid)) return Promise.resolve(_libMainCoverResults.get(mid))
+      if (_libMainCoverPromises.has(mid)) return _libMainCoverPromises.get(mid)
+      const p = fetchMainCoverRaw(mid).then(url => { _libMainCoverResults.set(mid, url || null); _libMainCoverPromises.delete(mid); return url || null })
+      _libMainCoverPromises.set(mid, p)
+      return p
     }
 
     async function resolveDemografiaDescripcion(idOrName) {
@@ -350,10 +369,10 @@ export default {
         cover = ''
       }
       if (!cover || typeof cover !== 'string' || !cover.startsWith('http')) {
-        const byId = await fetchCoverById(raw.cover_id || raw.main_cover_id || cover)
+        const byId = await getCoverByIdCached(raw.cover_id || raw.main_cover_id || cover)
         if (byId) cover = byId
         else {
-          const viaManga = await fetchMainCoverForManga(id)
+          const viaManga = await getMainCoverCached(id)
           if (viaManga) cover = viaManga
         }
       }

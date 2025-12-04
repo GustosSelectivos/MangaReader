@@ -112,10 +112,10 @@ async function resolveLocalCover(item) {
   if (!remote || typeof remote !== 'string' || !remote.startsWith('http')) {
     // Try by possible id fields first
     try { console.debug('[Home] Resolviendo cover remoto para manga', item.id) } catch (e) {}
-    const byId = await fetchCoverById(item.cover_id || item.main_cover_id || item.cover)
+    const byId = await getCoverByIdCached(item.cover_id || item.main_cover_id || item.cover)
     if (byId) remote = byId
     else {
-      const viaManga = await fetchMainCoverForManga(item.id)
+      const viaManga = await getMainCoverCached(item.id)
       if (viaManga) remote = viaManga
     }
   }
@@ -305,7 +305,7 @@ async function loadData() {
       copy.displayCover = await resolveLocalCover(copy)
       // If still a local asset (e.g., SVG), force remote main cover
       if (typeof copy.displayCover === 'string' && copy.displayCover.startsWith('/assets/covers/')) {
-        const forced = await fetchMainCoverForManga(copy.id)
+        const forced = await getMainCoverCached(copy.id)
         if (forced) copy.displayCover = forced
       }
       if (!copy.score) copy.score = copy.rating || copy.puntaje || 'N/A'
@@ -519,7 +519,7 @@ async function loadTrendingFiltered() {
           }
       copy.displayCover = await resolveLocalCover(copy)
       if (typeof copy.displayCover === 'string' && copy.displayCover.startsWith('/assets/covers/')) {
-        const forced = await fetchMainCoverForManga(copy.id)
+        const forced = await getMainCoverCached(copy.id)
         if (forced) copy.displayCover = forced
       }
       // Preferir valor del serializer si viene resuelto
