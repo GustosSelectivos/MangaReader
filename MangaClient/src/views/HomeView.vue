@@ -74,9 +74,6 @@ function setTrendingFilter(e) { trendingFilter.value = e.target ? e.target.value
 // Try a list of API endpoints (relative). If none succeed, fallback to local mock JSON.
 const apiCandidates = [
   'manga/mangas/',
-  'mangas/',
-  'manga/',
-  'mangas/list/'
 ]
 
 function normalizeData(raw) {

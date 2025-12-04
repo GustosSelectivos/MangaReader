@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
+import { listDemografias, listTags, listAutores, listEstados, createDemografia, createTag, createAutor, createEstado } from '@/services/mantenedorService'
 
 const demografias = ref([])
 const tags = ref([])
@@ -20,21 +21,19 @@ async function fetchLists() {
   loading.value = true
   error.value = ''
   try {
-    // usar servicios estáticos
-    const { listDemografias, listTags, listAutores, listEstados, createDemografia, createTag, createAutor, createEstado } = await import('@/services/mantenedorService')
     const dList = await listDemografias({ page_size: 200 })
-    demografias.value = Array.isArray(d.data) ? d.data : (d.data?.results || [])
+    demografias.value = Array.isArray(dList?.data) ? dList.data : (dList?.data?.results || dList || [])
     const tList = await listTags({ page_size: 200 })
-    tags.value = Array.isArray(t.data) ? t.data : (t.data?.results || [])
+    tags.value = Array.isArray(tList?.data) ? tList.data : (tList?.data?.results || tList || [])
     // Fetch autores (authors)
     try {
       const aList = await listAutores({ page_size: 200 })
-      autores.value = Array.isArray(a.data) ? a.data : (a.data?.results || [])
+      autores.value = Array.isArray(aList?.data) ? aList.data : (aList?.data?.results || aList || [])
     } catch (e) {}
     // Fetch estados (statuses)
     try {
       const sList = await listEstados({ page_size: 200 })
-      estados.value = Array.isArray(s.data) ? s.data : (s.data?.results || [])
+      estados.value = Array.isArray(sList?.data) ? sList.data : (sList?.data?.results || sList || [])
     } catch (e) {}
   } catch (e) {
     error.value = e.message || 'Error cargando listas'
@@ -49,7 +48,8 @@ async function addDemografia() {
     const payload = { descripcion: newDemografia.value }
     if (newDemografiaColor.value) payload.color = newDemografiaColor.value
     const res = await createDemografia(payload)
-    demografias.value.push(res.data)
+    const created = res?.data || res
+    demografias.value.push(created)
     newDemografia.value = ''
     newDemografiaColor.value = ''
   } catch (e) { error.value = e.message || 'Error creando demografía' }
@@ -109,7 +109,8 @@ async function addTag() {
   if (!newTag.value) return
   try {
     const res = await createTag({ descripcion: newTag.value })
-    tags.value.push(res.data)
+    const created = res?.data || res
+    tags.value.push(created)
     newTag.value = ''
   } catch (e) { error.value = e.message || 'Error creando tag' }
 }
@@ -120,7 +121,8 @@ async function addAutor() {
       nombre: newAutor.value,
       tipo_autor: newAutorTipo.value,
     })
-    autores.value.push(res.data)
+    const created = res?.data || res
+    autores.value.push(created)
     newAutor.value = ''
     newAutorTipo.value = ''
   } catch (e) { error.value = e.message || 'Error creando autor' }
@@ -129,7 +131,8 @@ async function addEstado() {
   if (!newEstado.value) return
   try {
     const res = await createEstado({ descripcion: newEstado.value })
-    estados.value.push(res.data)
+    const created = res?.data || res
+    estados.value.push(created)
     newEstado.value = ''
   } catch (e) { error.value = e.message || 'Error creando estado' }
 }

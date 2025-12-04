@@ -41,8 +41,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // You can inspect error.response.status and customize behavior
-    // For example, refresh token on 401, show toast notifications, etc.
+    const status = error?.response?.status
+    const config = error?.config || {}
+    // Reintentar una vez sin Authorization si 401 en GET
+    if (status === 401 && config && !config.__retried401 && String(config.method).toLowerCase() === 'get') {
+      config.__retried401 = true
+      try { delete config.headers?.Authorization } catch (e) {}
+      try { localStorage.removeItem('auth_token') } catch (e) {}
+      return api.request(config)
+    }
     return Promise.reject(error)
   }
 )
