@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import api from '@/services/api'
 import { listEstados, listDemografias, listAutores, listTags } from '@/services/mantenedorService'
 import { listMangasBasic, createManga, listAltTitulos, listCovers, listAutoresRel, listTagsRel, createAltTitulo, createCover, createAutorRel, createTagRel } from '@/services/mangaAdminService'
 
