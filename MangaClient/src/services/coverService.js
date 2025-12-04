@@ -93,6 +93,29 @@ export async function getMainCoversBatch(mangaIds) {
   return result
 }
 
+// Paralelo: resolver portadas consultando el endpoint por manga en paralelo
+// Hace una petición por cada id: api.get('manga/manga-covers/', { params: { manga, vigente:true } })
+// Útil si el listado global está paginado o restringido.
+export async function getMainCoversParallel(mangaIds) {
+  const ids = (Array.isArray(mangaIds) ? mangaIds : []).map(x => String(x)).filter(Boolean)
+  if (!ids.length) return new Map()
+  const tasks = ids.map(async (mid) => {
+    try {
+      const r = await api.get('manga/manga-covers/', { params: { manga: mid, vigente: true } })
+      const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+      const main = list.find(c => c.tipo_cover === 'main') || list[0]
+      const url = main?.url_absoluta || main?.url_imagen || null
+      if (url !== undefined) mainResults.set(mid, url)
+      return [mid, url]
+    } catch (e) {
+      return [mid, null]
+    }
+  })
+  const entries = await Promise.all(tasks)
+  const map = new Map(entries)
+  return map
+}
+
 // Utilidad: decide una portada remota
 export async function resolveRemoteCover({ id, cover, cover_id, main_cover_id }) {
   let remote = cover

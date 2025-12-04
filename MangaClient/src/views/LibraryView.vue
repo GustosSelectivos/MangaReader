@@ -149,6 +149,7 @@
 
 <script>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
 import cache from '@/services/cache'
 import { listMangas } from '@/services/mangaService'
@@ -184,6 +185,10 @@ export default {
     const yonkoma = ref('')
     const amateur = ref('')
     const erotic = ref('')
+
+    // Estado de autenticación desde el store
+    const auth = useAuthStore()
+    const isAuthenticated = computed(() => auth.isAuthenticated)
 
     // Genres
     const genreLimit = 5
@@ -528,6 +533,15 @@ export default {
       await fetchData()
     })
 
+    // Reaccionar al deslogueo: desactivar filtro erótico y refrescar
+    watch(isAuthenticated, (val) => {
+      if (!val) {
+        erotic.value = ''
+        page.value = 1
+        fetchData()
+      }
+    })
+
     function typeClass(m) {
       let raw = (m && (m.demography || m.type || ''))
       if (Array.isArray(raw)) raw = raw.join(' ')
@@ -589,6 +603,7 @@ export default {
       search, orderItem, orderDir,
       type, demography, status, translationStatus,
       webcomic, yonkoma, amateur, erotic,
+      isAuthenticated,
       includeGenres, excludeGenres, genres, genreLimit,
       openSection, toggleSection, enforceGenreLimit,
       showStatus, reload, applySearch,

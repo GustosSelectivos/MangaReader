@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import cache from '@/services/cache'
+import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
 
 const populars = ref([])
 const trending = ref([])
@@ -24,29 +26,22 @@ const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 const demografiasMap = new Map()
 let demografiasLoaded = false
 
-// --- Auth state for access control ---
-const isAuthenticated = ref(false)
+// --- Auth state (Pinia) para control de acceso ---
+const auth = useAuthStore()
+const isAuthenticated = computed(() => auth.isAuthenticated)
 const isSuperuser = ref(false)
 
-async function fetchAuthState() {
-  // Sin endpoint /me: deducir por presencia de token (SimpleJWT)
-  try {
-    const storage = (typeof window !== 'undefined') ? window.localStorage : null
-    const access = storage ? (storage.getItem('access') || storage.getItem('token') || storage.getItem('jwt')) : null
-    // Revisar también cookies de sesión (autenticación por SessionAuth)
-    let hasSession = false
-    if (typeof document !== 'undefined') {
-      const ck = document.cookie || ''
-      hasSession = /(^|;\s)sessionid=/.test(ck) || /(^|;\s)access=/.test(ck) || /(^|;\s)jwt=/.test(ck)
-    }
-    isAuthenticated.value = Boolean(access || hasSession)
-    // Sin endpoint de usuario, no podemos saber superuser; dejar false por defecto
-    isSuperuser.value = false
-  } catch (e) {
-    isAuthenticated.value = false
-    isSuperuser.value = false
+// Reaccionar a cambios de autenticación (logout/login)
+watch(isAuthenticated, (val) => {
+  if (!val) {
+    // Ocultar sección Erótico y limpiar su caché
+    if (popularTab.value === 'erotico') setPopularTab('all')
+    trendingCache.value.erotico = []
+    // Forzar filter a 'all' y refrescar listado sin erótico
+    trendingFilter.value = 'all'
+    displayedTrending.value = getFilteredByTab('all')
   }
-}
+})
 
 
 function setPopularTab(v) {
@@ -136,11 +131,8 @@ async function resolveLocalCover(item) {
     })
   })
 }
-
-// Helpers centralizados de portada
-import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
-
-async function loadData() {
+ 
+ async function loadData() {
   try {
     // Fetch both erotic=false and erotic=true, but display only non-erotic initially
     let data = []
@@ -170,23 +162,9 @@ async function loadData() {
       let fallbackData = await tryApis()
       data = normalizeData(fallbackData)
     }
+    // Si no hay datos del backend, mantenemos vacío en vez de cargar mocks
     if (!data || !data.length) {
-      // Prefer the universal mangas mock, fallback to universal chapters if present
-      let mockRaw = null
-      try {
-        const r = await api.get('/mock/mangas_universal.json')
-        mockRaw = r?.data || null
-      } catch (e) {}
-      if (!mockRaw) {
-        try {
-          const r2 = await api.get('/mock/chapters_universal.json')
-          mockRaw = r2?.data || null
-        } catch (e2) {}
-      }
-      if (!mockRaw) throw new Error('No mock data available')
-      // If mockRaw is chapters list, map to simple manga-like objects
-      const mapped = (Array.isArray(mockRaw) && mockRaw.length && mockRaw[0].pages) ? mockRaw.map(c => ({ id: c.id, title: c.manga_title || c.title || c.number, cover: c.cover })) : mockRaw
-      data = normalizeData(mapped)
+      data = []
     }
 
 
@@ -305,26 +283,6 @@ async function loadData() {
     }
   } catch (e) {
     error.value = e.message
-    // fallback demo items if everything fails
-    const fallback = [
-      { id: 90655, title: 'Reencarné como el padre de una joven malvada', cover: 'https://picsum.photos/seed/90655/400/600', score: '8.2', demography: 'Shounen' },
-      { id: 76332, title: 'Dungeon ni Hisomu Yandere', cover: 'https://picsum.photos/seed/76332/400/600', score: '7.9', demography: 'Seinen' },
-      { id: 90721, title: 'Pensé que sería popular...', cover: 'https://picsum.photos/seed/90721/400/600', score: '7.4', demography: 'Shounen' },
-      { id: 85293, title: 'Tsuihou Sareta Tanyashi', cover: 'https://picsum.photos/seed/85293/400/600', score: '6.6', demography: 'Shounen' },
-      { id: 88074, title: 'Shinjiteita Nakamatachi', cover: 'https://picsum.photos/seed/88074/400/600', score: '8.9', demography: 'Seinen' },
-      { id: 89191, title: 'Godlevel Assassin', cover: 'https://picsum.photos/seed/89191/400/600', score: '9.0', demography: 'Shounen' }
-    ]
-
-    const prepared = await Promise.all(fallback.map(async (it) => {
-      const copy = { ...it }
-      copy.displayCover = await resolveLocalCover(copy)
-      return copy
-    }))
-
-    populars.value = prepared
-    trending.value = prepared.slice(0, 6)
-    latest.value = prepared.slice(0, 6)
-    mostViewed.value = prepared.slice(0, 10)
   } finally {
     loading.value = false
   }
@@ -515,11 +473,12 @@ onMounted(async () => {
   await loadData()
   // Forzar estado consistente tras carga inicial
   setPopularTab('all')
+  // Consultar al backend de inmediato para el filtro actual (evitar datos de prueba)
+  await loadTrendingFiltered()
   if (!displayedTrending.value || !displayedTrending.value.length) {
     const baseAll = trendingCache.value.all.length ? trendingCache.value.all : trending.value
     displayedTrending.value = baseAll
   }
-  fetchAuthState()
 })
 
 // Watch the select filter
