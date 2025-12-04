@@ -161,6 +161,10 @@ export default {
     const route = useRoute()
     const router = useRouter()
 
+    // Mapa de demografías precargadas para resolución inmediata
+    const demografiasMap = new Map()
+    let demografiasLoaded = false
+
     // Core reactive state
     const mangas = ref([])
     const loading = ref(false)
@@ -304,16 +308,43 @@ export default {
       return null
     }
 
-    async function resolveDemografiaDescripcion(numId) {
-      if (!numId && numId !== 0) return { descripcion: '', color: '' }
-      try { return await resolveDemografiaDescripcion(numId) } catch (e) {}
+    async function resolveDemografiaDescripcion(idOrName) {
+      if (!idOrName && idOrName !== 0) return { descripcion: '', color: '' }
+      const mid = Number(idOrName)
+      if (Number.isFinite(mid) && demografiasMap.has(mid)) return demografiasMap.get(mid)
+      const direct = demografiasMap.get(idOrName)
+      if (direct) return { descripcion: direct.descripcion || '', color: direct.color || '' }
+      if (typeof idOrName === 'string' && demografiasMap.size) {
+        const needle = idOrName.trim().toLowerCase()
+        for (const [, val] of demografiasMap) {
+          const name = (val.descripcion || '').trim().toLowerCase()
+          if (name && name === needle) return { descripcion: val.descripcion || '', color: val.color || '' }
+        }
+      }
+      // Fallback remoto: intentar obtener por ID directo, luego por listado
+      try {
+        const r = await svc.getDemografiaById(idOrName)
+        const d = r?.data || r || {}
+        const val = { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
+        if (Number.isFinite(mid)) demografiasMap.set(mid, val)
+        return val
+      } catch (e) {}
+      try {
+        const rl = await svc.listDemografias({ page_size: 1000 })
+        const list = Array.isArray(rl?.data) ? rl.data : (rl?.data?.results || rl || [])
+        const found = list.find(x => String(x.id) === String(idOrName) || String((x.descripcion || x.name || x.title || '')).toLowerCase() === String(idOrName).toLowerCase()) || {}
+        const val = { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
+        if (Number.isFinite(mid)) demografiasMap.set(mid, val)
+        return val
+      } catch (e) {}
       return { descripcion: '', color: '' }
     }
 
     async function normalizeItemAsync(raw) {
       const id = raw.id || raw.slug || raw.uuid || Math.random().toString(36).slice(2)
       const title = raw.title || raw.titulo || raw.name || raw.manga_title || `Item ${id}`
-      let cover = raw.cover || raw.image || raw.portada || raw.cover_image || raw.url_absoluta || raw.url_imagen || ''
+      // Preferir portada del serializer cuando esté disponible
+      let cover = raw.cover || raw.cover_url || raw.image || raw.portada || raw.cover_image || raw.url_absoluta || raw.url_imagen || ''
       // Evitar fallback local como '/assets/covers/cover_4.svg': forzar resolución remota
       if (typeof cover === 'string' && (cover.endsWith('.svg') || cover.startsWith('/assets/covers/'))) {
         cover = ''
@@ -327,14 +358,23 @@ export default {
         }
       }
       if (!cover) cover = resolveCover(raw)
-      let dem = raw.demography || raw.demografia || raw.demo || ''
+      // Preferir demografia_display (del serializer) cuando esté disponible
+      let dem = raw.demografia_display || raw.demography || raw.demografia || raw.demo || ''
       if (Array.isArray(dem)) dem = dem.join(' ')
       if (typeof dem === 'object' && dem) dem = dem.descripcion || dem.description || dem.name || dem.title || dem.label || JSON.stringify(dem)
-      let dem_color = ''
+      let dem_color = raw.dem_color || ''
       if (typeof dem === 'number') {
-        const resolved = await resolveDemografiaDescripcion(dem)
-        dem = resolved.descripcion || ''
-        dem_color = resolved.color || ''
+        // Resolver primero desde mapa precargado, luego solicitar si falta
+        const mid = Number(dem)
+        const local = demografiasMap.get(mid)
+        if (local) {
+          dem = local.descripcion || ''
+          dem_color = dem_color || local.color || ''
+        } else {
+          const resolved = await resolveDemografiaDescripcion(dem)
+          dem = resolved.descripcion || ''
+          dem_color = dem_color || resolved.color || ''
+        }
       }
       dem = String(dem || '')
       return {
@@ -447,10 +487,25 @@ export default {
       return lastFetchCount.value === pageSize.value
     })
 
-    onMounted(() => {
-      // Seed demo items immediately for design preview
+    onMounted(async () => {
+      // Precargar demografías para aplicar color/descripcion inmediato
+      try {
+        if (!demografiasLoaded) {
+          const svc = await import('@/services/mantenedorService')
+          const list = await svc.listDemografias({ page_size: 1000 })
+          if (Array.isArray(list)) {
+            for (const d of list) {
+              const desc = d.descripcion || d.name || d.title || ''
+              const color = d.color || d.dem_color || ''
+              demografiasMap.set(Number(d.id), { descripcion: desc, color })
+            }
+            demografiasLoaded = true
+          }
+        }
+      } catch {}
+      // Seed demo items inmediatamente para vista y luego cargar datos reales
       mangas.value = demoSeed()
-      fetchData()
+      await fetchData()
     })
 
     function typeClass(m) {

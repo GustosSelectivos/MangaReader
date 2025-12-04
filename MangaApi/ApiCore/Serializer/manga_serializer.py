@@ -53,12 +53,34 @@ class MangaTagSerializer(serializers.ModelSerializer):
 class MangaSerializer(serializers.ModelSerializer):
 	estado_display = serializers.CharField(source='estado.nombre', read_only=True)
 	demografia_display = serializers.CharField(source='demografia.descripcion', read_only=True)
+	dem_color = serializers.CharField(source='demografia.color', read_only=True)
+	cover_url = serializers.SerializerMethodField()
+
+	def get_cover_url(self, obj):
+		# Priorizar cover principal vigente
+		try:
+			main = obj.covers.filter(vigente=True).order_by('id').first()
+			if main:
+				url = getattr(main, 'url_imagen', None)
+				if isinstance(url, str) and (url.startswith('http://') or url.startswith('https://')):
+					return url
+				# Construir absoluta si es relativa
+				request = self.context.get('request') if hasattr(self, 'context') else None
+				if request and isinstance(url, str):
+					try:
+						return request.build_absolute_uri(url)
+					except Exception:
+						return url
+				return url
+		except Exception:
+			pass
+		return None
 	autor_display = serializers.CharField(source='autor.nombre', read_only=True)
 
 	class Meta:
 		model = manga
 		fields = [
-			'id', 'titulo', 'sinopsis', 'estado', 'estado_display', 'demografia', 'demografia_display',
+			'id', 'titulo', 'sinopsis', 'estado', 'estado_display', 'demografia', 'demografia_display', 'dem_color', 'cover_url',
 			'autor', 'autor_display', 'fecha_lanzamiento', 'creado_en', 'actualizado_en', 'vigente', 'vistas', 'codigo', 'tipo_serie',
 			'erotico'
 		]

@@ -20,6 +20,9 @@ const trendingCache = ref({ all: [], shonen: [], seinen: [], erotico: [] })
 const switching = ref(false)
 let trendingFilterReqId = 0
 const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
+// Mapa de demografías para resolver descripción/color sin esperas
+const demografiasMap = new Map()
+let demografiasLoaded = false
 
 // --- Auth state for access control ---
 const isAuthenticated = ref(false)
@@ -180,6 +183,32 @@ async function fetchCoverById(possibleId) {
   return null
 }
 
+// Caches para deduplicar búsquedas de cover por ID y por manga
+const _coverIdPromises = new Map()
+const _coverIdResults = new Map()
+const _mainCoverPromises = new Map()
+const _mainCoverResults = new Map()
+
+function getCoverByIdCached(id){
+  const cid = Number(id)
+  if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
+  if (_coverIdResults.has(cid)) return Promise.resolve(_coverIdResults.get(cid))
+  if (_coverIdPromises.has(cid)) return _coverIdPromises.get(cid)
+  const p = fetchCoverById(cid).then(url => { _coverIdResults.set(cid, url || null); _coverIdPromises.delete(cid); return url || null })
+  _coverIdPromises.set(cid, p)
+  return p
+}
+
+function getMainCoverCached(mangaId){
+  const mid = String(mangaId)
+  if (!mid) return Promise.resolve(null)
+  if (_mainCoverResults.has(mid)) return Promise.resolve(_mainCoverResults.get(mid))
+  if (_mainCoverPromises.has(mid)) return _mainCoverPromises.get(mid)
+  const p = fetchMainCoverForManga(mid).then(url => { _mainCoverResults.set(mid, url || null); _mainCoverPromises.delete(mid); return url || null })
+  _mainCoverPromises.set(mid, p)
+  return p
+}
+
 async function loadData() {
   try {
     // Fetch both erotic=false and erotic=true, but display only non-erotic initially
@@ -259,20 +288,19 @@ async function loadData() {
       const copy = { ...it }
       // Normalize title from backend key 'titulo'
       copy.title = copy.title || copy.titulo || ''
-      // Normalize cover from possible backend keys
-      copy.cover = copy.cover || copy.cover_image || copy.url_absoluta || copy.url_imagen || copy.portada || ''
+      // Prefer backend-provided cover_url when available
+      copy.cover = copy.cover || copy.cover_url || copy.cover_image || copy.url_absoluta || copy.url_imagen || copy.portada || ''
       // Evitar usar assets locales como /assets/covers/cover_#.svg para forzar remoto
       if (typeof copy.cover === 'string' && (copy.cover.endsWith('.svg') || copy.cover.startsWith('/assets/covers/'))) {
         copy.cover = ''
       }
       // If no remote cover present, try fetching by cover id or via covers API
       if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-        // Try using possible cover id fields from backend
-        const byId = await fetchCoverById(copy.cover_id || copy.main_cover_id || copy.cover)
-        if (byId) {
-          copy.cover = byId
-        } else {
-          const c = await fetchMainCoverForManga(copy.id)
+        // Resolve per item, in paralelo pero deduplicado vía caches
+        const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
+        if (byId) copy.cover = byId
+        else {
+          const c = await getMainCoverCached(copy.id)
           if (c) copy.cover = c
         }
       }
@@ -288,8 +316,8 @@ async function loadData() {
       if (copy.erotico === true || copy.erotico === false) {
         copy.erotic = copy.erotico
       }
-      // Normalize demography to a readable string
-      let dem = copy.demography || copy.demografia || copy.type || ''
+      // Normalize demography to a readable string (prefer server-resolved display)
+      let dem = copy.demografia_display || copy.demography || copy.demografia || copy.type || ''
       if (Array.isArray(dem)) dem = dem.join(' ')
       if (dem && typeof dem === 'object') dem = dem.descripcion || dem.description || dem.name || dem.title || dem.label || JSON.stringify(dem)
       // If it's a numeric ID, resolve via mantenedor endpoints
@@ -395,17 +423,53 @@ async function ensureDemografiaIds() {
   }
 }
 
-async function resolveDemografiaDescripcion(numId) {
-  if (!numId && numId !== 0) return { descripcion: '', color: '' }
+// Precargar lista completa de demografías para evitar múltiples llamadas por ítem
+async function preloadDemografias() {
+  if (demografiasLoaded) return
   try {
-    const r = await api.get(`mantenedor/demografias/${numId}/`)
+    const p = { page_size: 1000 }
+    const k = cache.keyFrom('mantenedor/demografias/', p)
+    const c = cache.get(k)
+    const r = c ? { data: c } : await api.get('mantenedor/demografias/', { params: p })
+    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+    cache.set(k, list, 24 * 60 * 60 * 1000)
+    for (const d of list) {
+      const desc = d.descripcion || d.name || d.title || ''
+      const color = d.color || d.dem_color || ''
+      demografiasMap.set(Number(d.id), { descripcion: desc, color })
+    }
+    demografiasLoaded = true
+  } catch (e) { /* ignore */ }
+}
+
+async function resolveDemografiaDescripcion(idOrName) {
+  if (!idOrName && idOrName !== 0) return { descripcion: '', color: '' }
+  // Intento por ID numérico en mapa precargado
+  const mid = Number(idOrName)
+  if (Number.isFinite(mid) && demografiasMap.has(mid)) return demografiasMap.get(mid)
+  // Intento por clave directa
+  const direct = demografiasMap.get(idOrName)
+  if (direct) return { descripcion: direct.descripcion || direct.name || direct.title || '', color: direct.color || direct.dem_color || '' }
+  // Intento por nombre/descripción (case-insensitive) en mapa
+  if (typeof idOrName === 'string' && demografiasMap.size) {
+    const needle = idOrName.trim().toLowerCase()
+    for (const [, val] of demografiasMap) {
+      const name = (val.descripcion || val.name || val.title || '').trim().toLowerCase()
+      if (name && name === needle) {
+        return { descripcion: val.descripcion || val.name || val.title || '', color: val.color || val.dem_color || '' }
+      }
+    }
+  }
+  // Fallback: petición directa por ID; si es texto, se intentará listado
+  try {
+    const r = await api.get(`mantenedor/demografias/${idOrName}/`)
     const d = r?.data || {}
     return { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
   } catch (e) {}
   try {
     const rl = await api.get('mantenedor/demografias/', { params: { page_size: 1000 } })
     const list = Array.isArray(rl.data) ? rl.data : (rl.data?.results || [])
-    const found = list.find(x => String(x.id) === String(numId)) || {}
+    const found = list.find(x => String(x.id) === String(idOrName) || String((x.descripcion || x.name || x.title || '')).toLowerCase() === String(idOrName).toLowerCase()) || {}
     return { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
   } catch (e) {}
   return { descripcion: '', color: '' }
@@ -440,7 +504,7 @@ async function loadTrendingFiltered() {
   try {
     const r = await api.get('manga/mangas/', { params })
     const raw = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    const mapped = await Promise.all(raw.map(async it => {
+      const mapped = await Promise.all(raw.map(async it => {
       const copy = { ...it }
       copy.title = copy.titulo || copy.title || ''
       copy.cover = copy.cover || copy.cover_image || copy.url_absoluta || copy.url_imagen || ''
@@ -448,24 +512,32 @@ async function loadTrendingFiltered() {
         copy.cover = ''
       }
       // Resolve remote cover if needed (numeric id or missing http prefix)
-      if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-        const byId = await fetchCoverById(copy.cover_id || copy.main_cover_id || copy.cover)
-        if (byId) copy.cover = byId
-        else {
-          const c = await fetchMainCoverForManga(copy.id)
-          if (c) copy.cover = c
-        }
-      }
+          if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
+            const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
+            if (byId) copy.cover = byId
+            else {
+              const c = await getMainCoverCached(copy.id)
+              if (c) copy.cover = c
+            }
+          }
       copy.displayCover = await resolveLocalCover(copy)
       if (typeof copy.displayCover === 'string' && copy.displayCover.startsWith('/assets/covers/')) {
         const forced = await fetchMainCoverForManga(copy.id)
         if (forced) copy.displayCover = forced
       }
-      let dem = copy.demografia || copy.demography || copy.type || ''
+      // Preferir valor del serializer si viene resuelto
+      let dem = copy.demografia_display || copy.demografia || copy.demography || copy.type || ''
       if (typeof dem === 'number') {
-        const resolved = await resolveDemografiaDescripcion(dem)
-        dem = resolved.descripcion || ''
-        copy.dem_color = copy.dem_color || resolved.color || ''
+        // Resolver vía mapa precargado para evitar esperas; si falta, pedir puntualmente
+        const local = demografiasMap.get(Number(dem))
+        if (local) {
+          dem = local.descripcion || ''
+          copy.dem_color = copy.dem_color || local.color || ''
+        } else {
+          const resolved = await resolveDemografiaDescripcion(dem)
+          dem = resolved.descripcion || ''
+          copy.dem_color = copy.dem_color || resolved.color || ''
+        }
       }
       // Map backend erotico -> frontend erotic so Erótico tab and badges work
       if (copy.erotico === true || copy.erotico === false) {
@@ -491,7 +563,14 @@ async function loadTrendingFiltered() {
 
 onMounted(async () => {
   await fetchDemografiaIds()
-  loadData()
+  await preloadDemografias()
+  await loadData()
+  // Forzar estado consistente tras carga inicial
+  setPopularTab('all')
+  if (!displayedTrending.value || !displayedTrending.value.length) {
+    const baseAll = trendingCache.value.all.length ? trendingCache.value.all : trending.value
+    displayedTrending.value = baseAll
+  }
   fetchAuthState()
 })
 
