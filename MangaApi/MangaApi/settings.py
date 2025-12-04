@@ -207,6 +207,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 # If you prefer to allow any origin while developing, set to True (not recommended for production):
 # CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_METHODS = [
     "GET",
     "POST",
