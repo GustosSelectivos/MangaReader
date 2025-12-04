@@ -435,6 +435,19 @@ async function loadTrendingFiltered() {
   try {
     const r = await api.get('manga/mangas/', { params })
     const raw = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+    // Prefetch batch covers for items missing http cover
+    const needBatch = raw.filter(it => {
+      const c = it.cover || it.cover_image || it.url_absoluta || it.url_imagen || ''
+      return !c || typeof c !== 'string' || !c.startsWith('http')
+    })
+    const idsForBatch = needBatch.map(it => it.id).filter(Boolean)
+    let batchMap = new Map()
+    if (idsForBatch.length) {
+      try {
+        const { getMainCoversBatch } = await import('@/services/coverService')
+        batchMap = await getMainCoversBatch(idsForBatch)
+      } catch (e) { batchMap = new Map() }
+    }
       const mapped = await Promise.all(raw.map(async it => {
       const copy = { ...it }
       copy.title = copy.titulo || copy.title || ''
@@ -444,11 +457,15 @@ async function loadTrendingFiltered() {
       }
       // Resolve remote cover if needed (numeric id or missing http prefix)
           if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-            const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
-            if (byId) copy.cover = byId
+            const pre = batchMap.get(String(copy.id))
+            if (pre) copy.cover = pre
             else {
-              const c = await getMainCoverCached(copy.id)
-              if (c) copy.cover = c
+              const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
+              if (byId) copy.cover = byId
+              else {
+                const c = await getMainCoverCached(copy.id)
+                if (c) copy.cover = c
+              }
             }
           }
       copy.displayCover = await resolveLocalCover(copy)

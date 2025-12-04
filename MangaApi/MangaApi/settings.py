@@ -108,6 +108,8 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
+        # Mantener conexiones persistentes al DB para mejor rendimiento
+        'CONN_MAX_AGE': int(os.getenv('CONN_MAX_AGE', '60')),
     }
 }
 
@@ -174,6 +176,7 @@ SIMPLE_JWT = {
 
 # Security behind proxy (Railway, Heroku, etc.)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
 
 # WhiteNoise static files storage (compressed + caching). Requires whitenoise package.
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

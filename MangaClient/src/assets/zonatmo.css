@@ -28,7 +28,7 @@ body{background:var(--ztmo-bg); color:var(--ztmo-text); font-family: Inter, Robo
 .navbar-brand b{color:var(--ztmo-accent)}
 .navbar .form-control{width:260px}
 .thumbnail{background:linear-gradient(180deg,var(--ztmo-soft-overlay),transparent); border-radius:6px; padding:8px; position:relative; overflow:hidden; transition:background .25s;}
-.thumbnail::before{content:''; display:block; width:100%; height:160px; background-image:var(--thumb, url('/assets/demo/Cover_MW001.webp')); background-size:cover; background-position:center; border-radius:6px;}
+.thumbnail::before{content:''; display:block; width:100%; height:160px; background-image:var(--thumb, none); background-size:cover; background-position:center; border-radius:6px;}
 .thumbnail .thumbnail-title h4{font-size:14px;margin:0;color:var(--ztmo-text)}
 .badge{background:var(--ztmo-accent); color:white; padding:4px 8px; border-radius:6px; font-size:11px}
 .demography{position:absolute; left:8px; top:8px; background:rgba(0,0,0,0.5); padding:3px 6px; border-radius:4px; color:#fff; font-size:11px}

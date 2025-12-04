@@ -10,7 +10,7 @@
         </div>
       </div>
       <div class="hero-art">
-        <img src="/assets/demo/Cover_MW001.webp" alt="cover" />
+        <img :src="placeholder" alt="cover" />
       </div>
     </div>
   </section>
@@ -18,6 +18,7 @@
 
 <script setup>
 // simple presentational component
+const placeholder = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="300"/>'
 </script>
 
 <style scoped>

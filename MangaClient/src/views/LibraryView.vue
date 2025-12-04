@@ -408,8 +408,9 @@ export default {
     }
     function safeCover(url){
       const u = String(url || '').toLowerCase()
-      if (!u || !u.startsWith('http')) return '/assets/demo/Cover_MW001.webp'
-      if (u.includes('miswebtoons.uk/assets/covers')) return '/assets/demo/Cover_MW001.webp'
+      const blank = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="240"/>'
+      if (!u || !u.startsWith('http')) return blank
+      if (u.includes('miswebtoons.uk/assets/covers')) return blank
       return url
     }
 

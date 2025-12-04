@@ -66,6 +66,33 @@ export function getMainCoverCached(mangaId) {
   return p
 }
 
+// Batch: intentar resolver portadas principales de varios mangas en una sola consulta
+export async function getMainCoversBatch(mangaIds) {
+  const ids = (Array.isArray(mangaIds) ? mangaIds : []).map(x => String(x)).filter(Boolean)
+  if (!ids.length) return new Map()
+  // Si ya tenemos algunas en cache, marcarlas previamente
+  const result = new Map()
+  const missing = []
+  for (const mid of ids) {
+    if (mainResults.has(mid)) result.set(mid, mainResults.get(mid))
+    else missing.push(mid)
+  }
+  if (!missing.length) return result
+  try {
+    // No hay endpoint multi-id; obtenemos un listado grande y filtramos
+    const rAll = await api.get('manga/manga-covers/', { params: { vigente: true, page_size: 1000 } })
+    const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
+    for (const mid of missing) {
+      const forManga = listAll.filter(c => String(c.manga) === String(mid))
+      const main = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
+      const url = main?.url_absoluta || main?.url_imagen || null
+      mainResults.set(mid, url)
+      result.set(mid, url)
+    }
+  } catch (e) { /* ignore */ }
+  return result
+}
+
 // Utilidad: decide una portada remota
 export async function resolveRemoteCover({ id, cover, cover_id, main_cover_id }) {
   let remote = cover
