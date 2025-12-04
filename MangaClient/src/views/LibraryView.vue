@@ -152,7 +152,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import cache from '@/services/cache'
 import { listMangas } from '@/services/mangaService'
-import { fetchCoverById, getMainCoverForManga } from '@/services/mangaService'
+import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 import { resolveDemografiaDescripcion } from '@/services/mantenedorService'
 
 export default {

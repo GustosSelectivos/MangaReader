@@ -1,0 +1,81 @@
+// Centralizado: helpers de portadas con cache en memoria
+// Provee funciones para obtener portada por ID y portada principal por manga
+// y deduplica solicitudes concurrentes.
+
+import api from './api'
+
+const idPromises = new Map()
+const idResults = new Map()
+const mainPromises = new Map()
+const mainResults = new Map()
+
+async function fetchCoverByIdRaw(id) {
+  const cid = Number(id)
+  if (!cid || Number.isNaN(cid)) return null
+  try {
+    const r = await api.get(`manga/manga-covers/${cid}/`)
+    const obj = r?.data || {}
+    if (typeof obj.url_absoluta === 'string') return obj.url_absoluta
+    if (typeof obj.url_imagen === 'string') return obj.url_imagen
+  } catch (e) {}
+  return null
+}
+
+async function fetchMainCoverForMangaRaw(mangaId) {
+  const mid = String(mangaId)
+  if (!mid) return null
+  // Buscar por manga específico primero
+  try {
+    const p1 = { manga: mid, vigente: true }
+    const r1 = await api.get('manga/manga-covers/', { params: p1 })
+    const list1 = Array.isArray(r1.data) ? r1.data : (r1.data?.results || [])
+    const main = list1.find(c => c.tipo_cover === 'main') || list1[0]
+    if (main?.url_absoluta) return main.url_absoluta
+    if (main?.url_imagen) return main.url_imagen
+  } catch (e) {}
+  // Fallback: listado grande y filtrar por manga
+  try {
+    const pAll = { vigente: true, page_size: 1000 }
+    const rAll = await api.get('manga/manga-covers/', { params: pAll })
+    const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
+    const forManga = listAll.filter(c => String(c.manga) === String(mid))
+    const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
+    if (main2?.url_absoluta) return main2.url_absoluta
+    if (main2?.url_imagen) return main2.url_imagen
+  } catch (e) {}
+  return null
+}
+
+export function getCoverByIdCached(id) {
+  const cid = Number(id)
+  if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
+  if (idResults.has(cid)) return Promise.resolve(idResults.get(cid))
+  if (idPromises.has(cid)) return idPromises.get(cid)
+  const p = fetchCoverByIdRaw(cid).then(url => { idResults.set(cid, url || null); idPromises.delete(cid); return url || null })
+  idPromises.set(cid, p)
+  return p
+}
+
+export function getMainCoverCached(mangaId) {
+  const mid = String(mangaId)
+  if (!mid) return Promise.resolve(null)
+  if (mainResults.has(mid)) return Promise.resolve(mainResults.get(mid))
+  if (mainPromises.has(mid)) return mainPromises.get(mid)
+  const p = fetchMainCoverForMangaRaw(mid).then(url => { mainResults.set(mid, url || null); mainPromises.delete(mid); return url || null })
+  mainPromises.set(mid, p)
+  return p
+}
+
+// Utilidad: decide una portada remota
+export async function resolveRemoteCover({ id, cover, cover_id, main_cover_id }) {
+  let remote = cover
+  if (!remote || typeof remote !== 'string' || !remote.startsWith('http')) {
+    const byId = await getCoverByIdCached(cover_id || main_cover_id || cover)
+    if (byId) remote = byId
+    else {
+      const viaManga = await getMainCoverCached(id)
+      if (viaManga) remote = viaManga
+    }
+  }
+  return (typeof remote === 'string' && remote.startsWith('http')) ? remote : null
+}

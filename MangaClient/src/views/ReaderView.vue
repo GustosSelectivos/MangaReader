@@ -91,6 +91,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { listChapters } from '@/services/chapterService'
 import { getManga, listMangaCovers } from '@/services/mangaService'
 import api from '@/services/api'
+import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 
 export default {
   name: 'ReaderView',
@@ -159,20 +160,13 @@ export default {
     function getCoverByIdCachedClient(apiClient, id) {
       const cid = Number(id)
       if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
-      if (_readerCoverIdResults.has(cid)) return Promise.resolve(_readerCoverIdResults.get(cid))
-      if (_readerCoverIdPromises.has(cid)) return _readerCoverIdPromises.get(cid)
-      const p = fetchCoverById(apiClient, cid).then(url => { _readerCoverIdResults.set(cid, url || null); _readerCoverIdPromises.delete(cid); return url || null })
-      _readerCoverIdPromises.set(cid, p)
-      return p
+      // Usar servicio centralizado: igual cachea en su propio mapa
+      return getCoverByIdCached(cid)
     }
     function getMainCoverCachedClient(apiClient, mangaId) {
       const mid = String(mangaId)
       if (!mid) return Promise.resolve(null)
-      if (_readerMainCoverResults.has(mid)) return Promise.resolve(_readerMainCoverResults.get(mid))
-      if (_readerMainCoverPromises.has(mid)) return _readerMainCoverPromises.get(mid)
-      const p = fetchCoverForManga(apiClient, mid).then(url => { _readerMainCoverResults.set(mid, url || null); _readerMainCoverPromises.delete(mid); return url || null })
-      _readerMainCoverPromises.set(mid, p)
-      return p
+      return getMainCoverCached(mid)
     }
 
     async function load() {

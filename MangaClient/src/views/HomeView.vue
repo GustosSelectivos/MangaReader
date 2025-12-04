@@ -137,74 +137,8 @@ async function resolveLocalCover(item) {
   })
 }
 
-// Global helpers (moved out of loadData for reuse in filtered loads)
-async function fetchMainCoverForManga(id) {
-  try {
-        const p1 = { manga: id, vigente: true }
-        const k1 = cache.keyFrom('manga/manga-covers/', p1)
-        const c1 = cache.get(k1)
-        const r1 = c1 ? { data: c1 } : await api.get('manga/manga-covers/', { params: p1 })
-    const list1 = Array.isArray(r1.data) ? r1.data : (r1.data?.results || [])
-    const main = list1.find(c => (c.tipo_cover === 'main')) || list1[0]
-  if (main && typeof main.url_absoluta === 'string') return main.url_absoluta
-  if (main && typeof main.url_imagen === 'string') return main.url_imagen
-        cache.set(k1, list1, 10 * 60 * 1000)
-  } catch (e) {}
-  try {
-        const pAll = { vigente: true, page_size: 1000 }
-        const kAll = cache.keyFrom('manga/manga-covers/', pAll)
-        const cAll = cache.get(kAll)
-        const rAll = cAll ? { data: cAll } : await api.get('manga/manga-covers/', { params: pAll })
-    const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
-    const forManga = listAll.filter(c => String(c.manga) === String(id))
-    const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
-  if (main2 && typeof main2.url_absoluta === 'string') return main2.url_absoluta
-  if (main2 && typeof main2.url_imagen === 'string') return main2.url_imagen
-        cache.set(kAll, listAll, 10 * 60 * 1000)
-  } catch (e) {}
-  return null
-}
-
-async function fetchCoverById(possibleId) {
-  const cid = Number(possibleId)
-  if (!cid || Number.isNaN(cid)) return null
-  try {
-        const k = cache.keyFrom(`manga/manga-covers/${cid}/`)
-        const c = cache.get(k)
-        const r = c ? { data: c } : await api.get(`manga/manga-covers/${cid}/`)
-    const obj = r?.data || {}
-  if (typeof obj.url_absoluta === 'string') return obj.url_absoluta
-  if (typeof obj.url_imagen === 'string') return obj.url_imagen
-        cache.set(k, obj, 24 * 60 * 60 * 1000)
-  } catch (e) {}
-  return null
-}
-
-// Caches para deduplicar búsquedas de cover por ID y por manga
-const _coverIdPromises = new Map()
-const _coverIdResults = new Map()
-const _mainCoverPromises = new Map()
-const _mainCoverResults = new Map()
-
-function getCoverByIdCached(id){
-  const cid = Number(id)
-  if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
-  if (_coverIdResults.has(cid)) return Promise.resolve(_coverIdResults.get(cid))
-  if (_coverIdPromises.has(cid)) return _coverIdPromises.get(cid)
-  const p = fetchCoverById(cid).then(url => { _coverIdResults.set(cid, url || null); _coverIdPromises.delete(cid); return url || null })
-  _coverIdPromises.set(cid, p)
-  return p
-}
-
-function getMainCoverCached(mangaId){
-  const mid = String(mangaId)
-  if (!mid) return Promise.resolve(null)
-  if (_mainCoverResults.has(mid)) return Promise.resolve(_mainCoverResults.get(mid))
-  if (_mainCoverPromises.has(mid)) return _mainCoverPromises.get(mid)
-  const p = fetchMainCoverForManga(mid).then(url => { _mainCoverResults.set(mid, url || null); _mainCoverPromises.delete(mid); return url || null })
-  _mainCoverPromises.set(mid, p)
-  return p
-}
+// Helpers centralizados de portada
+import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 
 async function loadData() {
   try {
