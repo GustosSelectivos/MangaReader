@@ -37,8 +37,9 @@ SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 DEBUG = str(os.getenv("DEBUG_API", "True")).lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = [
+    "*"
     "www.miswebtoons.uk",
-    "mangareader-production.up.railway.app",
+    ".railway.app",
     "manga-reader-bv4.pages.dev",
     "127.0.0.1",
     "localhost"
@@ -107,6 +108,7 @@ DATABASES = {
         'PORT': os.getenv("PORT", "3306"),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'ssl': {'disabled': True},
         },
         # Mantener conexiones persistentes al DB para mejor rendimiento
         'CONN_MAX_AGE': int(os.getenv('CONN_MAX_AGE', '60')),
