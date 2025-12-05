@@ -189,9 +189,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings - development friendly. Install with: pip install django-cors-headers
 # For production, restrict origins instead of allowing all.
-CORS_ALLOW_CREDENTIALS = True
+#CORS_ALLOW_CREDENTIALS = True
 # Allow the Vite dev server origin during development
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
     "https://www.miswebtoons.uk",
     "http://localhost:5173",
     "https://mangareader-production.up.railway.app",
