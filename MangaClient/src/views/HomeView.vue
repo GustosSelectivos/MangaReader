@@ -32,12 +32,11 @@ const isAuthenticated = computed(() => auth.isAuthenticated)
 const isSuperuser = ref(false)
 
 // Reaccionar a cambios de autenticación (logout/login)
+// Al desloguearse, ocultar sección erótico y limpiar su caché
 watch(isAuthenticated, (val) => {
   if (!val) {
-    // Ocultar sección Erótico y limpiar su caché
-    if (popularTab.value === 'erotico') setPopularTab('all')
     trendingCache.value.erotico = []
-    // Forzar filter a 'all' y refrescar listado sin erótico
+    if (popularTab.value === 'erotico') setPopularTab('all')
     trendingFilter.value = 'all'
     displayedTrending.value = getFilteredByTab('all')
   }
@@ -579,15 +578,35 @@ function isErotic(item) {
           <!-- Populares / Tabs -->
           <div class="row">
             <div class="col">
-              <nav class="nav nav-pills nav-justified mb-3" id="pills-tab" role="tablist">
-                <a href="#" @click.prevent="setPopularTab('all')" :class="['nav-item nav-link', { active: popularTab === 'all' }]">All</a>
-                <a href="#" @click.prevent="setPopularTab('shonen')" :class="['nav-item nav-link', { active: popularTab === 'shonen' }]">Shonen</a>
-                <a href="#" @click.prevent="setPopularTab('seinen')" :class="['nav-item nav-link', { active: popularTab === 'seinen' }]">Seinen</a>
-                <a v-if="isAuthenticated" href="#" @click.prevent="setPopularTab('erotico')" :class="['nav-item nav-link', { active: popularTab === 'erotico' }]">Erótico</a>
-              </nav>
+                <nav class="nav nav-pills nav-justified mb-3" id="pills-tab" role="tablist" aria-label="Tabs populares">
+                 <a href="#"
+                   role="tab"
+                   :aria-selected="popularTab === 'all' ? 'true' : 'false'"
+                   aria-controls="pills-populars"
+                   @click.prevent="setPopularTab('all')"
+                   :class="['nav-item nav-link', { active: popularTab === 'all' }]">All</a>
+                 <a href="#"
+                   role="tab"
+                   :aria-selected="popularTab === 'shonen' ? 'true' : 'false'"
+                   aria-controls="pills-populars-shonen"
+                   @click.prevent="setPopularTab('shonen')"
+                   :class="['nav-item nav-link', { active: popularTab === 'shonen' }]">Shonen</a>
+                 <a href="#"
+                   role="tab"
+                   :aria-selected="popularTab === 'seinen' ? 'true' : 'false'"
+                   aria-controls="pills-populars-seinen"
+                   @click.prevent="setPopularTab('seinen')"
+                   :class="['nav-item nav-link', { active: popularTab === 'seinen' }]">Seinen</a>
+                 <a v-if="isAuthenticated" href="#"
+                   role="tab"
+                   :aria-selected="popularTab === 'erotico' ? 'true' : 'false'"
+                   aria-controls="pills-populars-erotico"
+                   @click.prevent="setPopularTab('erotico')"
+                   :class="['nav-item nav-link', { active: popularTab === 'erotico' }]">Erótico</a>
+                </nav>
 
               <div class="tab-content" id="pills-tabContent" :key="popularTab">
-                <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars">
+                <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <div v-for="item in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
@@ -623,7 +642,7 @@ function isErotic(item) {
                 </div>
 
                 <!-- Simple placeholders for other tabs (can be replaced by filtered lists) -->
-                <div v-show="popularTab === 'shonen'" class="tab-pane" id="pills-populars-shonen">
+                <div v-show="popularTab === 'shonen'" class="tab-pane" id="pills-populars-shonen" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
@@ -637,7 +656,7 @@ function isErotic(item) {
                     </div>
                   </div>
                 </div>
-                <div v-show="popularTab === 'seinen'" class="tab-pane" id="pills-populars-seinen">
+                <div v-show="popularTab === 'seinen'" class="tab-pane" id="pills-populars-seinen" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
@@ -651,7 +670,7 @@ function isErotic(item) {
                     </div>
                   </div>
                 </div>
-                <div v-if="isAuthenticated" v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico">
+                <div v-if="isAuthenticated" v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">

@@ -5,6 +5,7 @@
     
 
     <MangaReader
+      :key="chapter?.id || chapterId"
       :pages="pages"
       :initialPage="1"
       :title="mangaTitle"

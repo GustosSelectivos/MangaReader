@@ -21,10 +21,10 @@ async function submit() {
 </script>
 
 <template>
-  <div class="login-view container py-4">
-    <h2 class="mb-3">Iniciar sesión</h2>
-    <p class="text-muted">Ingresa tus credenciales para desbloquear las pantallas de desarrollo.</p>
-    <form @submit.prevent="submit" class="v-stack gap-3" style="max-width:420px">
+  <div class="login-view container">
+    <h2 class="mb-3 text-center">Iniciar sesión</h2>
+    <p class="text-muted text-center">Ingresa tus credenciales para desbloquear las pantallas de desarrollo.</p>
+    <form @submit.prevent="submit" class="v-stack gap-3 form-box">
       <div>
         <label class="form-label">Usuario</label>
         <input v-model="username" type="text" class="form-control" required autocomplete="username" />
@@ -37,9 +37,9 @@ async function submit() {
         </div>
       </div>
       <div v-if="auth.error" class="alert alert-danger py-2">{{ auth.error }}</div>
-      <div>
-        <button class="btn btn-primary" :disabled="auth.loading">{{ auth.loading ? 'Verificando...' : 'Entrar' }}</button>
-        <RouterLink to="/" class="btn btn-link">Cancelar</RouterLink>
+      <div class="actions">
+        <button class="btn btn-primary w-100" :disabled="auth.loading">{{ auth.loading ? 'Verificando...' : 'Entrar' }}</button>
+        <RouterLink to="/" class="btn btn-link w-100 text-center">Cancelar</RouterLink>
       </div>
     </form>
   </div>
@@ -48,6 +48,8 @@ async function submit() {
 <style scoped>
 .v-stack { display:flex; flex-direction:column; }
 .gap-3 { gap:1rem; }
-.login-view { max-width:800px; }
+.login-view { max-width:800px; min-height: 80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.form-box { width:100%; max-width:420px; }
+.actions { display:flex; flex-direction:column; gap:8px; }
 </style>
 
