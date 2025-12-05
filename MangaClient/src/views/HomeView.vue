@@ -133,33 +133,19 @@ async function resolveLocalCover(item) {
  
  async function loadData() {
   try {
-    // Fetch both erotic=false and erotic=true, but display only non-erotic initially
+    // Single fetch: load all mangas and filter on client
     let data = []
-    let nonErotic = null
-    let eroticOnly = null
     try {
-      const rFalse = await api.get('manga/mangas/', { params: { erotico: false, page_size: 100 } })
-      nonErotic = normalizeData(rFalse?.data?.results || rFalse?.data)
+      const rAll = await api.get('manga/mangas/', { params: { page_size: 100 } })
+      data = normalizeData(rAll?.data?.results || rAll?.data)
     } catch (e) {
       try {
-        const rFalse2 = await api.get('mangas/', { params: { erotico: false, page_size: 100 } })
-        nonErotic = normalizeData(rFalse2?.data?.results || rFalse2?.data)
-      } catch (e2) {}
-    }
-    try {
-      const rTrue = await api.get('manga/mangas/', { params: { erotico: true, page_size: 100 } })
-      eroticOnly = normalizeData(rTrue?.data?.results || rTrue?.data)
-    } catch (e) {
-      try {
-        const rTrue2 = await api.get('mangas/', { params: { erotico: true, page_size: 100 } })
-        eroticOnly = normalizeData(rTrue2?.data?.results || rTrue2?.data)
-      } catch (e2) {}
-    }
-    if (Array.isArray(nonErotic) || Array.isArray(eroticOnly)) {
-      data = normalizeData([...(nonErotic || []), ...(eroticOnly || [])])
-    } else {
-      let fallbackData = await tryApis()
-      data = normalizeData(fallbackData)
+        const rAll2 = await api.get('mangas/', { params: { page_size: 100 } })
+        data = normalizeData(rAll2?.data?.results || rAll2?.data)
+      } catch (e2) {
+        let fallbackData = await tryApis()
+        data = normalizeData(fallbackData)
+      }
     }
     // Si no hay datos del backend, mantenemos vacío en vez de cargar mocks
     if (!data || !data.length) {
@@ -192,6 +178,15 @@ async function resolveLocalCover(item) {
       return { descripcion: '', color: '' }
     }
 
+    // Pre-resolve main covers in batch to avoid per-item delays
+    const ids = data.map(d => d.id).filter(Boolean)
+    let batchCoverMap = new Map()
+    if (ids.length) {
+      try {
+        batchCoverMap = await getMainCoversBatch(ids)
+      } catch (e) { batchCoverMap = new Map() }
+    }
+
     const prepared = await Promise.all(data.map(async (it) => {
       const copy = { ...it }
       // Normalize title from backend key 'titulo'
@@ -204,12 +199,16 @@ async function resolveLocalCover(item) {
       }
       // If no remote cover present, try fetching by cover id or via covers API
       if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-        // Resolve per item, in paralelo pero deduplicado vía caches
-        const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
-        if (byId) copy.cover = byId
+        // First try batch prefetch, then individual cache lookups
+        const pre = batchCoverMap.get(String(copy.id))
+        if (pre) copy.cover = pre
         else {
-          const c = await getMainCoverCached(copy.id)
-          if (c) copy.cover = c
+          const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
+          if (byId) copy.cover = byId
+          else {
+            const c = await getMainCoverCached(copy.id)
+            if (c) copy.cover = c
+          }
         }
       }
       // Prefer remote cover for display when available
@@ -263,8 +262,19 @@ async function resolveLocalCover(item) {
       }
       const raw = r?.data?.results || r?.data || []
       const norm = normalizeData(raw)
+      // Prefetch covers for most viewed in parallel
+      const mvIds = norm.slice(0, 10).map(i => i.id).filter(Boolean)
+      let mvBatchMap = new Map()
+      if (mvIds.length) {
+        try { mvBatchMap = await getMainCoversBatch(mvIds) } catch (e) { mvBatchMap = new Map() }
+      }
       const prepped = await Promise.all(norm.slice(0, 10).map(async (it) => {
         const copy = { ...it }
+        // Prefer batch cover if missing
+        if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
+          const pre = mvBatchMap.get(String(copy.id))
+          if (pre) copy.cover = pre
+        }
         copy.displayCover = await resolveLocalCover(copy)
         // Normalize title key differences
         copy.title = copy.title || copy.titulo || ''
@@ -363,107 +373,29 @@ async function resolveDemografiaDescripcion(idOrName) {
   return { descripcion: '', color: '' }
 }
 
-async function loadTrendingFiltered() {
-  const reqId = ++trendingFilterReqId
-  const baseParams = { page_size: 100 }
-  let params = { ...baseParams }
-  // Asegura tener demografías antes de aplicar filtro por tab
-  await ensureDemografiaIds()
-  // Filtro por demografía (ID). Shonen usa 7 en tu backend.
-  if (trendingFilter.value === 'shonen') params.demografia = demografiaIds.value.shonen ?? 7
-  else if (trendingFilter.value === 'seinen') params.demografia = demografiaIds.value.seinen ?? 9
-  else if (trendingFilter.value === 'erotico' && demografiaIds.value.erotico) params.demografia = demografiaIds.value.erotico
-  // Backend-driven erotic filter when tab is 'erotico'
-  if (trendingFilter.value === 'erotico') {
-    params.erotico = true
-  } else {
-    // For other tabs (including 'all'), explicitly request non-erotic content
-    params.erotico = false
-  }
-  // Si no contamos con demografia numérica (producción sin mantenedor), evita hacer request sin filtro
-  if ((trendingFilter.value === 'shonen' && !demografiaIds.value.shonen) || (trendingFilter.value === 'seinen' && !demografiaIds.value.seinen)) {
-    // Mantener listado cliente usando cache/local sin pedir al backend sin filtro
-    const key = trendingFilter.value
-    if (trendingCache.value[key]?.length) {
-      displayedTrending.value = trendingCache.value[key]
-    }
+// El filtro de trending se resuelve en cliente usando el cache cargado
+function loadTrendingFiltered() {
+  const key = trendingFilter.value
+  const baseAll = trendingCache.value.all.length ? trendingCache.value.all : trending.value
+  if (key === 'erotico') {
+    displayedTrending.value = trendingCache.value.erotico.length
+      ? trendingCache.value.erotico
+      : baseAll.filter(i => isErotic(i))
     return
   }
-  try {
-    const r = await api.get('manga/mangas/', { params })
-    const raw = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    // Prefetch batch covers for items missing http cover
-    const needBatch = raw.filter(it => {
-      const c = it.cover || it.cover_image || it.url_absoluta || it.url_imagen || ''
-      return !c || typeof c !== 'string' || !c.startsWith('http')
-    })
-    const idsForBatch = needBatch.map(it => it.id).filter(Boolean)
-    let batchMap = new Map()
-    if (idsForBatch.length) {
-      try {
-        const { getMainCoversBatch } = await import('@/services/coverService')
-        batchMap = await getMainCoversBatch(idsForBatch)
-      } catch (e) { batchMap = new Map() }
-    }
-      const mapped = await Promise.all(raw.map(async it => {
-      const copy = { ...it }
-      copy.title = copy.titulo || copy.title || ''
-      copy.cover = copy.cover || copy.cover_image || copy.url_absoluta || copy.url_imagen || ''
-      if (typeof copy.cover === 'string' && (copy.cover.endsWith('.svg') || copy.cover.startsWith('/assets/covers/'))) {
-        copy.cover = ''
-      }
-      // Resolve remote cover if needed (numeric id or missing http prefix)
-          if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-            const pre = batchMap.get(String(copy.id))
-            if (pre) copy.cover = pre
-            else {
-              const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
-              if (byId) copy.cover = byId
-              else {
-                const c = await getMainCoverCached(copy.id)
-                if (c) copy.cover = c
-              }
-            }
-          }
-      copy.displayCover = await resolveLocalCover(copy)
-      if (typeof copy.displayCover === 'string' && copy.displayCover.startsWith('/assets/covers/')) {
-        const forced = await getMainCoverCached(copy.id)
-        if (forced) copy.displayCover = forced
-      }
-      // Preferir valor del serializer si viene resuelto
-      let dem = copy.demografia_display || copy.demografia || copy.demography || copy.type || ''
-      if (typeof dem === 'number') {
-        // Resolver vía mapa precargado para evitar esperas; si falta, pedir puntualmente
-        const local = demografiasMap.get(Number(dem))
-        if (local) {
-          dem = local.descripcion || ''
-          copy.dem_color = copy.dem_color || local.color || ''
-        } else {
-          const resolved = await resolveDemografiaDescripcion(dem)
-          dem = resolved.descripcion || ''
-          copy.dem_color = copy.dem_color || resolved.color || ''
-        }
-      }
-      // Map backend erotico -> frontend erotic so Erótico tab and badges work
-      if (copy.erotico === true || copy.erotico === false) {
-        copy.erotic = copy.erotico
-      }
-      copy.demography = String(dem || '')
-      return copy
-    }))
-    // No sobrescribimos "trending" global para no impactar otras pestañas; solo cacheamos el filtro actual.
-    // Update cache for the current filter to speed subsequent tab switches
-    const key = trendingFilter.value
-    // Guard against late responses overriding a newer selection
-    if (reqId === trendingFilterReqId && key && trendingCache.value[key]) {
-      trendingCache.value[key] = mapped
-      if (popularTab.value === key) {
-        displayedTrending.value = mapped
-      }
-    }
-  } catch (e) {
-    // keep existing trending on error
+  if (key === 'shonen') {
+    displayedTrending.value = trendingCache.value.shonen.length
+      ? trendingCache.value.shonen
+      : baseAll.filter(i => String(i.demography || '').toLowerCase().includes('shon'))
+    return
   }
+  if (key === 'seinen') {
+    displayedTrending.value = trendingCache.value.seinen.length
+      ? trendingCache.value.seinen
+      : baseAll.filter(i => String(i.demography || '').toLowerCase().includes('sein'))
+    return
+  }
+  displayedTrending.value = baseAll
 }
 
 onMounted(async () => {
@@ -472,8 +404,8 @@ onMounted(async () => {
   await loadData()
   // Forzar estado consistente tras carga inicial
   setPopularTab('all')
-  // Consultar al backend de inmediato para el filtro actual (evitar datos de prueba)
-  await loadTrendingFiltered()
+  // Resolver filtro actual en cliente
+  loadTrendingFiltered()
   if (!displayedTrending.value || !displayedTrending.value.length) {
     const baseAll = trendingCache.value.all.length ? trendingCache.value.all : trending.value
     displayedTrending.value = baseAll
@@ -571,7 +503,13 @@ function isErotic(item) {
       <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
       <p>Cargando contenido...</p>
     </div>
-    
+    <div v-else-if="!populars.length && !displayedTrending.length && !latest.length && !mostViewed.length" class="empty-container">
+      <div class="text-center py-5">
+        <h3 class="mb-2">No hay contenido disponible</h3>
+        <p class="text-muted">Intenta recargar o verificar la conexión con el servidor.</p>
+      </div>
+    </div>
+
     <div class="home-layout" v-else>
       <div class="home-main">
 
@@ -845,6 +783,8 @@ function isErotic(item) {
   height: 192px;
   margin-bottom: 20px;
 }
+
+.empty-container { min-height: 40vh; display:flex; align-items:center; justify-content:center; }
 
 /* Improve dark mode readability for muted texts */
 .home-view .text-muted { color: var(--ztmo-text); opacity: 0.75; }
