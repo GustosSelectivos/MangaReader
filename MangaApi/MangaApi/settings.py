@@ -34,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = str(os.getenv("DEBUG_API", "True")).lower() in ("1", "true", "yes")
+DEBUG = os.getenv("DEBUG_API")
 
 ALLOWED_HOSTS = [
     "www.miswebtoons.uk",
