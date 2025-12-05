@@ -181,11 +181,13 @@ export default {
         let mockLoaded = false
         if (isDev) {
           try {
-            const resp = await api.get('/mock/chapters_universal.json')
-            const data = resp?.data
-            if (data) {
-              chs = data
-              mockLoaded = Array.isArray(chs) && chs.length > 0
+            const resp = await fetch('/mock/chapters_universal.json')
+            if (resp.ok) {
+              const data = await resp.json()
+              if (data) {
+                chs = data
+                mockLoaded = Array.isArray(chs) && chs.length > 0
+              }
             }
           } catch (e) { /* ignore */ }
         }

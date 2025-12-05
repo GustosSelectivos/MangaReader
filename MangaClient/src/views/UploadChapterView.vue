@@ -13,6 +13,9 @@ const seriesCode = ref('') // código entre chapters/ y /<num-capitulo>/
 // Manga list for selection
 const mangas = ref([])
 const loadingMangas = ref(false)
+const searchQuery = ref('')
+const searching = ref(false)
+const searchError = ref('')
 
 // Editing existing chapter
 const chapters = ref([])
@@ -64,22 +67,45 @@ const chapterPayload = computed(() => {
 async function fetchMangas() {
   loadingMangas.value = true
   try {
-    let r
-    try {
-      // static service import
-      // eslint-disable-next-line import/no-unresolved
-      const { listMangas } = await import('@/services/mangaService')
-      const data = await listMangas({ page_size: 500, ordering: '-id' })
-    } catch (e) {
-      r = { data: data || [] }
+    const { listMangas } = await import('@/services/mangaService')
+    const data = await listMangas({ page_size: 500, ordering: '-id' })
+    let list = Array.isArray(data) ? data : (data?.results || [])
+    // Fallback a endpoints directos si el servicio devuelve vacío
+    if (!list.length) {
+      try {
+        const r = await api.get('manga/mangas/', { params: { page_size: 500, ordering: '-id' } })
+        list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+      } catch (e2) {
+        try {
+          const r2 = await api.get('mangas/', { params: { page_size: 500, ordering: '-id' } })
+          list = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
+        } catch {}
+      }
     }
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
     // Map minimal info and sort desc by id
     mangas.value = list
       .map(m => ({ id: m.id, titulo: m.titulo || m.title || `Manga #${m.id}`, codigo: m.codigo || m.code || '' }))
       .sort((a, b) => Number(b.id) - Number(a.id))
   } catch (e) {
-    // Fallback: leave empty, user can input ID/código manualmente
+    // Fallback: intenta directo a API
+    try {
+      const r = await api.get('manga/mangas/', { params: { page_size: 500, ordering: '-id' } })
+      const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+      mangas.value = list
+        .map(m => ({ id: m.id, titulo: m.titulo || m.title || `Manga #${m.id}`, codigo: m.codigo || m.code || '' }))
+        .sort((a, b) => Number(b.id) - Number(a.id))
+    } catch (e2) {
+      try {
+        const r2 = await api.get('mangas/', { params: { page_size: 500, ordering: '-id' } })
+        const list2 = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
+        mangas.value = list2
+          .map(m => ({ id: m.id, titulo: m.titulo || m.title || `Manga #${m.id}`, codigo: m.codigo || m.code || '' }))
+          .sort((a, b) => Number(b.id) - Number(a.id))
+      } catch {
+        // Si todo falla, deja vacío y el usuario puede ingresar el ID/código manualmente
+        mangas.value = []
+      }
+    }
   } finally {
     loadingMangas.value = false
   }
@@ -104,17 +130,48 @@ async function fetchChaptersForManga(mangaIdVal) {
   selectedChapterId.value = ''
   try {
     // List chapters for manga
-    // eslint-disable-next-line import/no-unresolved
     const { listChapters } = await import('@/services/chapterService')
-    const list = await listChapters({ manga: mangaIdVal, page_size: 500, ordering: '-id' })
-    chapters.value = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+    const data = await listChapters({ manga: mangaIdVal, page_size: 500, ordering: '-id' })
+    chapters.value = Array.isArray(data) ? data : (data?.results || [])
   } catch (e) {
-    try {
-      const r2 = { data: list }
-      chapters.value = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
-    } catch (e2) { /* ignore */ }
+    // leave empty; user can still input ID
   } finally {
     loadingChapters.value = false
+  }
+}
+
+// Búsqueda manual por título o código
+async function searchMangasManual() {
+  searchError.value = ''
+  searching.value = true
+  try {
+    const q = (searchQuery.value || '').trim()
+    if (!q) { searchError.value = 'Ingresa un término'; return }
+    const params = {}
+    // Heurística: si contiene espacios o letras, usa search (título); si es código corto sin espacios, intenta código
+    if (/\s/.test(q) || /[a-zA-Z]/.test(q)) params.search = q
+    else params.codigo = q
+    params.page_size = 50
+    let list = []
+    try {
+      const r = await api.get('manga/mangas/', { params })
+      list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
+    } catch (e1) {
+      try {
+        const r2 = await api.get('mangas/', { params })
+        list = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
+      } catch (e2) {
+        throw e2
+      }
+    }
+    mangas.value = list
+      .map(m => ({ id: m.id, titulo: m.titulo || m.title || `Manga #${m.id}`, codigo: m.codigo || m.code || '' }))
+      .sort((a, b) => Number(b.id) - Number(a.id))
+    if (!mangas.value.length) searchError.value = 'Sin resultados'
+  } catch (e) {
+    searchError.value = e?.message || 'Error buscando'
+  } finally {
+    searching.value = false
   }
 }
 
@@ -122,11 +179,9 @@ async function loadSelectedChapter() {
   existing.value = null
   if (!selectedChapterId.value) return
   try {
-    // eslint-disable-next-line import/no-unresolved
     const { getChapter } = await import('@/services/chapterService')
     const data = await getChapter(selectedChapterId.value)
-    const ch = r?.data
-    existing.value = ch || null
+    existing.value = data || null
     // Prefill form from existing chapter
     if (existing.value) {
       mangaId.value = existing.value.manga
@@ -141,11 +196,7 @@ async function loadSelectedChapter() {
       pagesCount.value = String(existing.value.pages?.images?.length || '')
     }
   } catch (e) {
-    // try alternate path
-    try {
-      const r2 = { data }
-      existing.value = r2?.data || null
-    } catch (e2) { existing.value = null }
+    existing.value = null
   }
 }
 
@@ -165,18 +216,8 @@ async function submit() {
   try {
     // Envía JSON con `images` y metadatos del capítulo
     // Ajusta endpoint real cuando exista en el backend
-    let res
-    try {
-      // Correct endpoint path: included at /api/chapters/ + router.register('chapters', ...)
-      // Final path: /api/chapters/chapters/
-      // eslint-disable-next-line import/no-unresolved
-      const { createChapter } = await import('@/services/chapterService')
-      res = { data: await createChapter(payload) }
-    } catch (e) {
-      // Fallback: try root /api/chapters/ if server configured differently
-      // reused above
-      res = { data: await createChapter(payload) }
-    }
+    const { createChapter } = await import('@/services/chapterService')
+    await createChapter(payload)
     message.value = 'Capítulo creado y subido correctamente.'
     // Limpia el formulario
     chapterNumber.value = ''
@@ -232,12 +273,19 @@ async function updateChapter() {
     <form @submit.prevent="submit" class="v-stack gap-3">
       <div class="row g-3">
         <div class="col-md-6">
+          <label class="form-label">Buscar Manga</label>
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <input v-model="searchQuery" type="text" class="form-control" placeholder="Buscar por título o código" />
+            <button type="button" class="btn btn-outline-secondary" :disabled="searching" @click="searchMangasManual">{{ searching ? 'Buscando...' : 'Buscar' }}</button>
+          </div>
+          <div v-if="searchError" class="small text-danger mb-2">{{ searchError }}</div>
           <label class="form-label">Manga (ID)</label>
           <select v-model="mangaId" class="form-select">
             <option value="" disabled>Selecciona manga</option>
             <option v-for="m in mangas" :key="m.id" :value="m.id">{{ m.id }} - {{ m.titulo }}</option>
           </select>
           <small class="text-muted">Ordenado de mayor a menor ID.</small>
+          <div class="form-text">Escribe el código de serie o parte del título y elige el resultado.</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Código de serie (ej: en-9c1c08)</label>

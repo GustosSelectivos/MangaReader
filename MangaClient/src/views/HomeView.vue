@@ -66,7 +66,7 @@ function setPendingTab(v) { pendingTab.value = v }
 function setTrendingTab(v) { trendingTab.value = v }
 function setTrendingFilter(e) { trendingFilter.value = e.target ? e.target.value : e }
 
-// Try a list of API endpoints (relative). If none succeed, fallback to local mock JSON.
+// Try a list of API endpoints (relative). No mocks or local fallbacks.
 const apiCandidates = [
   'manga/mangas/',
 ]
@@ -92,7 +92,7 @@ async function tryApis() {
       const key = cache.keyFrom(ep)
       const cached = cache.get(key)
       if (cached) return cached
-      const res = await api.get(ep, { timeout: 3000 })
+      const res = await api.get(ep)
       if (res && res.data) return res.data
     } catch (e) {
       // ignore and try next
@@ -139,20 +139,20 @@ async function resolveLocalCover(item) {
     let nonErotic = null
     let eroticOnly = null
     try {
-      const rFalse = await api.get('manga/mangas/', { params: { erotico: false, page_size: 100 }, timeout: 3000 })
+      const rFalse = await api.get('manga/mangas/', { params: { erotico: false, page_size: 100 } })
       nonErotic = normalizeData(rFalse?.data?.results || rFalse?.data)
     } catch (e) {
       try {
-        const rFalse2 = await api.get('mangas/', { params: { erotico: false, page_size: 100 }, timeout: 3000 })
+        const rFalse2 = await api.get('mangas/', { params: { erotico: false, page_size: 100 } })
         nonErotic = normalizeData(rFalse2?.data?.results || rFalse2?.data)
       } catch (e2) {}
     }
     try {
-      const rTrue = await api.get('manga/mangas/', { params: { erotico: true, page_size: 100 }, timeout: 3000 })
+      const rTrue = await api.get('manga/mangas/', { params: { erotico: true, page_size: 100 } })
       eroticOnly = normalizeData(rTrue?.data?.results || rTrue?.data)
     } catch (e) {
       try {
-        const rTrue2 = await api.get('mangas/', { params: { erotico: true, page_size: 100 }, timeout: 3000 })
+        const rTrue2 = await api.get('mangas/', { params: { erotico: true, page_size: 100 } })
         eroticOnly = normalizeData(rTrue2?.data?.results || rTrue2?.data)
       } catch (e2) {}
     }
@@ -258,9 +258,9 @@ async function resolveLocalCover(item) {
     try {
       let r
       try {
-        r = await api.get('manga/mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false }, timeout: 3000 })
+        r = await api.get('manga/mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false } })
       } catch (e) {
-        r = await api.get('mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false }, timeout: 3000 })
+        r = await api.get('mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false } })
       }
       const raw = r?.data?.results || r?.data || []
       const norm = normalizeData(raw)

@@ -37,7 +37,6 @@ SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 DEBUG = str(os.getenv("DEBUG_API", "True")).lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = [
-    "*"
     "www.miswebtoons.uk",
     ".railway.app",
     "manga-reader-bv4.pages.dev",

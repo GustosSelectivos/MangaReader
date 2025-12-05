@@ -56,11 +56,8 @@ async function load() {
   try {
     if (import.meta?.env?.DEV) {
       const apiClient = (await import('@/services/api')).default
-      let list = []
-      try {
-        const r = await apiClient.get('/mock/chapters_universal.json')
-        list = r?.data || []
-      } catch (e) { throw new Error('Mock not found') }
+        // No mocks: return empty
+        return []
       const found = Array.isArray(list) ? list.find(c => String(c.id) === String(props.chapterId)) || list[0] : list
       if (found) {
         chapter.value = found

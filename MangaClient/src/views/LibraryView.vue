@@ -257,11 +257,12 @@ export default {
         const data = await listMangas(params.value)
         lastFetchCount.value = Array.isArray(data) ? data.length : 0
         const items = Array.isArray(data) ? await Promise.all(data.map(d => normalizeItemAsync(d))) : []
-        mangas.value = page.value > 1 ? mangas.value.concat(items) : (items.length ? items : demoSeed())
+        mangas.value = page.value > 1 ? mangas.value.concat(items) : items
       } catch (e) {
         console.error('Library fetch error', e)
         error.value = e
         if (!mangas.value.length) mangas.value = demoSeed()
+        if (!mangas.value.length) mangas.value = []
       } finally {
         loading.value = false
       }
@@ -284,12 +285,14 @@ export default {
           currentPage++
         }
         mangas.value = accumulated.length ? accumulated : demoSeed()
+        mangas.value = accumulated
         lastFetchCount.value = accumulated.length
         page.value = currentPage
       } catch (e) {
         console.error('Library fetch all error', e)
         error.value = e
         if (!mangas.value.length) mangas.value = demoSeed()
+        if (!mangas.value.length) mangas.value = []
       } finally {
         loading.value = false
       }
@@ -441,35 +444,8 @@ export default {
     }
 
     function demoSeed() {
-      // Rich demo dataset for layout preview
-      const base = '/assets/demo';
-      const items = [
-        { id: 'd1', title: 'Pintor Nocturno', cover: `${base}/Cover_MW001.webp`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd2', title: 'Solo Leveling', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'shounen' },
-        { id: 'd3', title: 'BJ Alex', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd4', title: 'Jinx', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd5', title: 'Suhwa', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd6', title: 'Shell Boy', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd7', title: 'Querida Puerta', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd8', title: 'How to Chase an Alpha', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd9', title: 'Roses and Champagne', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd10', title: '19 Days', cover: `${base}/cover2.jpg`, type: 'manhua', demography: 'josei' },
-        { id: 'd11', title: 'Kiss Me Liar', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd12', title: 'Jujutsu Kaisen', cover: `${base}/cover2.jpg`, type: 'manga', demography: 'shounen' },
-        { id: 'd13', title: 'La Vida Después de la Muerte', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'shounen' },
-        { id: 'd14', title: 'Full Volume', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd15', title: 'Under The Greenlight', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd16', title: 'Killing Stalking', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd17', title: 'Chainsaw Man', cover: `${base}/cover2.jpg`, type: 'manga', demography: 'shounen' },
-        { id: 'd18', title: 'Low Tide in Twilight', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd19', title: 'Circunstancias de Jooin', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd20', title: 'When The Yakuza Falls In Love', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true },
-        { id: 'd21', title: 'Cherry Blossoms After Winter', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'shoujo', erotic: true },
-        { id: 'd22', title: 'One Punch-Man', cover: `${base}/cover2.jpg`, type: 'manga', demography: 'seinen' },
-        { id: 'd23', title: 'Final Villana Muerte', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'shoujo' },
-        { id: 'd24', title: 'Dangerous Convenience Store', cover: `${base}/cover2.jpg`, type: 'manhwa', demography: 'josei', erotic: true }
-      ];
-      return items;
+      // No demo/mocks: always return empty when no data
+      return []
     }
 
     function reload() {
