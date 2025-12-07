@@ -477,6 +477,10 @@ function originLabel(item) {
     }
   }
   if (typeof t === 'string') t = t.toLowerCase()
+  // Normalize common synonyms
+  const norm = String(t || '')
+  if (norm.includes('comic')) return 'Comic'
+  if (/one[\s_\-]?shot/.test(norm)) return 'One-shot'
   if (t && t.includes('manhwa')) return 'Manhwa'
   if (t && t.includes('manhua')) return 'Manhua'
   if (t && t.includes('novel')) return 'Novela'
