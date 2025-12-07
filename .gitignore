@@ -65,7 +65,7 @@ Thumbs.db
 **/*.log
 
 # Local Files
-Capitulos_Manga_Download/
 msedgedriver.exe
 pages.txt
 digital_serie.sql
+MangaScripts/

@@ -1,5 +1,5 @@
 <template>
-  <div class="manga-reader">
+  <div class="manga-reader" ref="rootRef">
     <ReaderToolbar
         :title="title"
         :chapter="currentChapter"
@@ -32,7 +32,9 @@
 
       <div class="reader-content">
         <div v-if="viewMode === 'paginated'" class="single-page-view" ref="singlePageRef">
-          <PageViewer :image="pages[currentPage - 1]" :fitMode="fitMode" :noMaxHeight="true" />
+          <div class="click-zone" @pointerdown.prevent="onSinglePointer" role="button" tabindex="0">
+            <PageViewer :image="pages[currentPage - 1]" :fitMode="fitMode" :noMaxHeight="true" />
+          </div>
 
           <!-- Controles combinados: capítulo y página en paginado -->
           <div class="page-controls-wrapper d-flex justify-content-between align-items-center">
@@ -88,7 +90,7 @@
         <!-- Libreta mode: show current pair only, reuse page-controls-wrapper -->
         <div v-else class="libreta-view">
           <div class="libreta-pair card p-2 mb-3">
-            <div class="page-viewer libreta-pair-inner" :class="libretaContainerClass" v-if="currentPair.length">
+            <div class="page-viewer libreta-pair-inner" :class="libretaContainerClass" v-if="currentPair.length" @pointerdown.prevent="onLibretaPointer">
                 <PageViewer v-for="(item, i) in currentPair" :key="(item.url || '') + i" :image="item.url || item" :fitMode="'contain'" :noMaxHeight="true" :class="[getLibretaClass(item)]" />
             </div>
           </div>
@@ -151,6 +153,9 @@ export default {
     const fitMode = ref('contain')
     const viewMode = ref('paginated')
     const pairIndex = ref(0)
+    const rootRef = ref(null)
+    const swipeStartX = ref(null)
+    const SWIPE_THRESHOLD = 40
     const orientationMap = ref({}) // url -> 'landscape'|'portrait'
     const currentChapter = computed(() => props.chapter)
     const singlePageRef = ref(null)
@@ -184,11 +189,73 @@ export default {
       applyViewerGapClass()
       // Precalcular orientaciones al montar
       ensureOrientations()
+
+      // Keyboard navigation (left/right)
+      function onKeyDown(e) {
+        if (e.key === 'ArrowLeft') {
+          if (viewMode.value === 'libreta') prevPair()
+          else prevPage()
+        } else if (e.key === 'ArrowRight') {
+          if (viewMode.value === 'libreta') nextPair()
+          else nextPage()
+        }
+      }
+      window.addEventListener('keydown', onKeyDown)
+      window.__manga_onKeyDown = onKeyDown
+
+      // Swipe handling on rootRef
+      nextTick(() => {
+        try {
+          const root = rootRef.value
+          if (!root) return
+          const onPointerDownGlobal = (ev) => {
+            try { swipeStartX.value = ev.clientX !== undefined ? ev.clientX : (ev.touches && ev.touches[0] && ev.touches[0].clientX) } catch (e) { swipeStartX.value = null }
+          }
+          const onPointerUpGlobal = (ev) => {
+            try {
+              const endX = ev.clientX !== undefined ? ev.clientX : (ev.changedTouches && ev.changedTouches[0] && ev.changedTouches[0].clientX)
+              if (swipeStartX.value == null || endX == null) { swipeStartX.value = null; return }
+              const delta = endX - swipeStartX.value
+              swipeStartX.value = null
+              if (Math.abs(delta) < SWIPE_THRESHOLD) return
+              if (delta > 0) {
+                // swipe right -> go previous
+                if (viewMode.value === 'libreta') prevPair()
+                else prevPage()
+              } else {
+                // swipe left -> go next
+                if (viewMode.value === 'libreta') nextPair()
+                else nextPage()
+              }
+            } catch (e) { swipeStartX.value = null }
+          }
+          root.__onPointerDown = onPointerDownGlobal
+          root.__onPointerUp = onPointerUpGlobal
+          root.addEventListener('pointerdown', onPointerDownGlobal)
+          root.addEventListener('pointerup', onPointerUpGlobal)
+          // touch fallback
+          root.addEventListener('touchstart', onPointerDownGlobal)
+          root.addEventListener('touchend', onPointerUpGlobal)
+        } catch (e) {}
+      })
     })
 
     onBeforeUnmount(() => {
       const fn = window.__onViewerMode
       if (fn) window.removeEventListener('viewer-mode', fn)
+      try {
+        const k = window.__manga_onKeyDown
+        if (k) window.removeEventListener('keydown', k)
+      } catch (e) {}
+      try {
+        const root = rootRef.value
+        if (root) {
+          if (root.__onPointerDown) root.removeEventListener('pointerdown', root.__onPointerDown)
+          if (root.__onPointerUp) root.removeEventListener('pointerup', root.__onPointerUp)
+          try { root.removeEventListener('touchstart', root.__onPointerDown) } catch (e) {}
+          try { root.removeEventListener('touchend', root.__onPointerUp) } catch (e) {}
+        }
+      } catch (e) {}
     })
 
     function setView(mode) {
@@ -264,6 +331,34 @@ export default {
       const i = getCurrentCascadeIndex()
       const els = cascadePageEls.value || []
       if (i < els.length - 1) scrollToCascadeIndex(i + 1)
+    }
+
+    // Handle pointer/click on single paginated view: left -> prev, right -> next
+    function onSinglePointer(e) {
+      try {
+        const el = singlePageRef.value
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const clientX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX)
+        if (clientX === undefined) return
+        const rel = (clientX - rect.left) / rect.width
+        if (rel < 0.5) prevPage()
+        else nextPage()
+      } catch (err) {}
+    }
+
+    // Handle pointer/click on libreta pair container: left -> prevPair, right -> nextPair
+    function onLibretaPointer(e) {
+      try {
+        // use the currentTarget to ensure we're measuring the container
+        const container = e.currentTarget || e.target
+        const rect = container.getBoundingClientRect()
+        const clientX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX)
+        if (clientX === undefined) return
+        const rel = (clientX - rect.left) / rect.width
+        if (rel < 0.5) prevPair()
+        else nextPair()
+      } catch (err) {}
     }
 
     function applyViewerGapClass() {
@@ -449,7 +544,7 @@ export default {
     watch(pairIndex, () => preloadLibreta())
     watch(pairedPages, () => preloadLibreta())
 
-    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass }
+    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass, onSinglePointer, onLibretaPointer }
   }
 }
 </script>
@@ -480,6 +575,9 @@ export default {
 .libreta-pair-inner { display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap: nowrap }
 .libreta-pair-inner .page-viewer { flex:1; display:flex; justify-content:center; align-items:center }
 .libreta-pair-inner img { width:100%; height:auto; object-fit:contain }
+/* Clickable zones for quick left/right navigation */
+.click-zone { cursor: pointer; display: block }
+.click-zone:active { opacity: 0.98 }
 /* Align even pages (left) and odd pages (right) within the pair */
 .libreta-left { order: 0 }
 .libreta-right { order: 1 }
