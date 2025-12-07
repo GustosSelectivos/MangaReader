@@ -3,17 +3,37 @@
     <header class="element-header manga">
       <div class="container header-inner">
         <div class="row align-items-start">
-          <div class="col-12 col-md-3 text-center">
+          <div class="col-12 col-md-4 text-center">
             <h4 class="book-type">MANGA</h4>
             <div class="element-image my-2">
-              <img class="book-thumbnail" :src="cover" alt="cover" loading="lazy" decoding="async" fetchpriority="high" />
+              <img class="book-thumbnail" :src="cover" alt="Portada del manga" loading="lazy" decoding="async" fetchpriority="high" />
             </div>
-            <h1 class="element-title">{{ mangaTitle }} <small v-if="year">( {{ year }} )</small></h1>
-            <h2 class="element-subtitle">{{ mangaTitle }}</h2>
-            <p class="element-description">{{ description }}</p>
-            <!-- external link removed per request -->
-            <div class="badges">
-              <span class="badge badge-primary" v-for="g in genres" :key="g">{{ g }}</span>
+          </div>
+          <div class="col-12 col-md-8">
+            <h1 class="element-title display-5">{{ mangaTitle }} <small v-if="year" class="text-muted">( {{ year }} )</small></h1>
+            <p class="element-description lead">{{ description }}</p>
+            <!-- Genero/Demografía bajo la descripción -->
+            <div v-if="mainDemography" class="demography-badge mt-2 mb-3">
+              <span class="badge badge-demography">{{ mainDemography }}</span>
+            </div>
+            <div class="badges mb-3" v-if="genres && genres.length">
+              <span class="badge badge-primary me-2 mb-2" v-for="g in genres" :key="g">{{ g }}</span>
+            </div>
+            <div class="status-row mb-3" v-if="statusDisplay">
+              <span class="status-dot" :class="{ on: statusDisplay.on }"></span>
+              <strong class="ms-2">{{ statusDisplay.label }}</strong>
+            </div>
+            <div class="alt-titles mb-3" v-if="altTitles && altTitles.length">
+              <h6 class="mb-2">Títulos alternativos</h6>
+              <div class="chips">
+                <span class="chip" v-for="t in altTitles" :key="t">{{ t }}</span>
+              </div>
+            </div>
+            <div class="synonyms mb-2" v-if="synonyms && synonyms.length">
+              <h6 class="mb-2">Sinónimos</h6>
+              <div class="chips">
+                <span class="chip" v-for="s in synonyms" :key="s">{{ s }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -107,6 +127,11 @@ export default {
     const description = ref('')
     const rating = ref('0.00')
     const year = ref('')
+    const genres = ref([])
+    const mainDemography = ref('')
+    const statusDisplay = ref(null)
+    const altTitles = ref([])
+    const synonyms = ref([])
 
     const chapters = ref([])
     const selectedIndex = ref(0)
@@ -204,6 +229,22 @@ export default {
           mangaTitle.value = mData.titulo || mData.title || mangaTitle.value
           cover.value = mData.cover || mData.cover_image || mData.url_imagen || cover.value
           description.value = mData.sinopsis || mData.description || description.value
+          rating.value = String(mData.puntaje || mData.rating || rating.value)
+          year.value = String(mData.anio || mData.year || year.value)
+          // Map genres/demography
+          const g = mData.generos || mData.genres || mData.tags || []
+          genres.value = Array.isArray(g) ? g.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
+          const dem = mData.demografia_display || mData.demografia || mData.demography || ''
+          mainDemography.value = typeof dem === 'object' ? (dem.descripcion || dem.name || dem.title) : String(dem || '')
+          // Status mapping
+          const estado = mData.estado_display || mData.estado || mData.status || ''
+          const estadoStr = typeof estado === 'object' ? (estado.descripcion || estado.name || estado.title) : String(estado || '')
+          if (estadoStr) statusDisplay.value = { label: estadoStr, on: /public|ongoing|publicándose|en emisión/i.test(estadoStr) }
+          // Alternative titles / synonyms
+          const alt = mData.titulos_alternativos || mData.alternative_titles || []
+          altTitles.value = Array.isArray(alt) ? alt.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
+          const syn = mData.sinonimos || mData.synonyms || []
+          synonyms.value = Array.isArray(syn) ? syn.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
           if (!cover.value || typeof cover.value !== 'string' || cover.value.trim() === '' || !cover.value.startsWith('http')) {
             const byId = await getCoverByIdCachedClient(apiClient, mData.cover_id || mData.main_cover_id || mData.cover)
             cover.value = byId || (await getMainCoverCachedClient(apiClient, mangaIdVal.value)) || cover.value
@@ -310,7 +351,7 @@ export default {
       chapters, selectedChapter, selectedIndex, loading, error,
       selectChapter, openChapter, prevChapter, nextChapter, visibleChapters,
       showAllChapters, orderAsc, toggleOrder,
-      externalLink, uploadLink, genres: []
+      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms
     }
   }
 }
@@ -318,13 +359,20 @@ export default {
 
 <style scoped>
 .reader-page { padding: 0; color: var(--text-primary); }
-.element-header { background: var(--surface-1, #f8f9fa); padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.element-header { background: var(--surface-1, #f8f9fa); padding: 20px 0; border-bottom: 1px solid var(--border-color); }
 .header-inner .book-type { display:inline-block; padding:6px 10px; background:var(--accent,#2957ba); color:var(--surface-1,#fff); border-radius:3px }
 .element-image { margin-top:10px }
-.book-thumbnail { width:160px; height:auto; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border:1px solid rgba(0,0,0,0.04); }
-.element-title { font-size:1.6rem; margin-bottom:6px; color:var(--color-heading); }
-.element-description { margin-top:8px; color:var(--text-primary,#444); }
-.badges .badge { margin-right:6px }
+.book-thumbnail { width:200px; height:auto; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border:1px solid rgba(0,0,0,0.04); }
+.genre-ribbon .ribbon { display:inline-block; margin-top:8px; padding:6px 12px; background:#e53935; color:#fff; border-radius:4px; font-weight:600 }
+.demography-badge .badge-demography { display:inline-block; padding:6px 12px; background:#e53935; color:#fff; border-radius:4px; font-weight:600 }
+.element-title { font-size:2.2rem; margin-bottom:10px; color:var(--color-heading); }
+.element-description { margin-top:10px; color:var(--text-primary,#444); font-size: 0.95rem; line-height: 1.5; }
+.badges .badge { margin-right:6px; background:#2957ba; }
+.status-row { display:flex; align-items:center; }
+.status-row .status-dot { width:10px; height:10px; border-radius:50%; background:#999; display:inline-block }
+.status-row .status-dot.on { background:#2ecc71 }
+.chips { display:flex; flex-wrap:wrap; gap:8px }
+.chip { background:#1f2a44; color:#fff; padding:6px 10px; border-radius:16px; font-size:.9rem }
 .chapters-list .list-group-item { cursor: default }
 .sticky-top { position: sticky; top:12px }
 
@@ -368,6 +416,8 @@ export default {
 
 
 @media (max-width: 767px) {
-  .book-thumbnail { width:120px }
+  .book-thumbnail { width:140px }
+  .element-title { font-size:1.6rem }
+  .element-description { font-size: 0.9rem; }
 }
 </style>
