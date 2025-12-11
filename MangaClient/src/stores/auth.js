@@ -5,6 +5,7 @@ import api from '@/services/api'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('auth_token') || '')
   const user = ref(JSON.parse(localStorage.getItem('auth_user') || 'null'))
+  const permissions = ref(JSON.parse(localStorage.getItem('auth_permissions') || '[]'))
   const loading = ref(false)
   const error = ref(null)
 
@@ -37,6 +38,15 @@ export const useAuthStore = defineStore('auth', () => {
       persist()
       // Set default auth header for subsequent API calls
       try { api.defaults.headers.common['Authorization'] = `Bearer ${token.value}` } catch (e) {}
+      // Fetch global permissions for the current user (if available)
+      try {
+        const rPerm = await api.get('auth/permissions/')
+        permissions.value = rPerm?.data?.permissions || []
+        localStorage.setItem('auth_permissions', JSON.stringify(permissions.value))
+      } catch (e) {
+        permissions.value = []
+        try { localStorage.removeItem('auth_permissions') } catch (e2) {}
+      }
       return true
     } catch (e) {
       error.value = e.message || 'Error de autenticación'
@@ -49,15 +59,18 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = ''
     user.value = null
+    permissions.value = []
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_permissions')
     try { delete api.defaults.headers.common['Authorization'] } catch (e) {}
   }
 
   function persist() {
     if (token.value) localStorage.setItem('auth_token', token.value)
     if (user.value) localStorage.setItem('auth_user', JSON.stringify(user.value))
+    if (permissions.value) localStorage.setItem('auth_permissions', JSON.stringify(permissions.value))
   }
 
-  return { token, user, loading, error, isAuthenticated, login, logout }
+  return { token, user, permissions, loading, error, isAuthenticated, login, logout }
 })

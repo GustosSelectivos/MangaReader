@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters as drf_filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from ApiCore.access_control import DRFDACPermission
 from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
 from ApiCore.Models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
@@ -9,12 +10,14 @@ from ApiCore.Serializer.manga_serializer import (
     MangaSerializer, MangaAltTituloSerializer, MangaCoverSerializer, MangaAutorSerializer, MangaTagSerializer
 )
 from ApiCore.Filter.manga_filters import MangaFilter, MangaCoverFilter
+from ApiCore.access_control import DRFDACPermission
 
 
 class MangaViewSet(viewsets.ModelViewSet):
     queryset = manga.objects.all()
     serializer_class = MangaSerializer
-    permission_classes = [AllowAny]
+    # Use DAC permission: read allowed to all, writes require DAC 'write' on the object
+    permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_class = MangaFilter
     search_fields = ['titulo', 'sinopsis']
@@ -34,7 +37,7 @@ class MangaViewSet(viewsets.ModelViewSet):
 class MangaAltTituloViewSet(viewsets.ModelViewSet):
     queryset = manga_alt_titulo.objects.all()
     serializer_class = MangaAltTituloSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     search_fields = ['titulo_alternativo']
 
@@ -42,7 +45,7 @@ class MangaAltTituloViewSet(viewsets.ModelViewSet):
 class MangaCoverViewSet(viewsets.ModelViewSet):
     queryset = manga_cover.objects.all()
     serializer_class = MangaCoverSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_class = MangaCoverFilter
     search_fields = ['url_imagen']
@@ -52,7 +55,7 @@ class MangaCoverViewSet(viewsets.ModelViewSet):
 class MangaAutorViewSet(viewsets.ModelViewSet):
     queryset = manga_autor.objects.all()
     serializer_class = MangaAutorSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     search_fields = ['rol']
 
@@ -60,5 +63,5 @@ class MangaAutorViewSet(viewsets.ModelViewSet):
 class MangaTagViewSet(viewsets.ModelViewSet):
     queryset = manga_tag.objects.all()
     serializer_class = MangaTagSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]

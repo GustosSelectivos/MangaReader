@@ -15,6 +15,8 @@
 
 import axios from 'axios'
 
+// SECURITY WARNING: Storing tokens in localStorage is vulnerable to XSS.
+// TODO: Refactor to usage of HttpOnly cookies for better security.
 const DEFAULT_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/'
 
 const api = axios.create({
@@ -46,8 +48,8 @@ api.interceptors.response.use(
     // Reintentar una vez sin Authorization si 401 en GET
     if (status === 401 && config && !config.__retried401 && String(config.method).toLowerCase() === 'get') {
       config.__retried401 = true
-      try { delete config.headers?.Authorization } catch (e) {}
-      try { localStorage.removeItem('auth_token') } catch (e) {}
+      try { delete config.headers?.Authorization } catch (e) { }
+      try { localStorage.removeItem('auth_token') } catch (e) { }
       return api.request(config)
     }
     return Promise.reject(error)

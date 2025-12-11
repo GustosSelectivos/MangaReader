@@ -67,6 +67,12 @@ const router = createRouter({
       component: MangasAdminView,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/dev/profiles',
+      name: 'dev-profiles',
+      component: () => import('../views/ProfilesAdminView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Redirect legacy creator path to unified admin view
     {
       path: '/dev/manga-creator',

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 import pymysql
-import dj_database_url
+
 
 pymysql.install_as_MySQLdb()
 
@@ -71,6 +71,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'ApiCore.middleware.DACAuditMiddleware',
     'ApiCore.middleware.APICallCounterMiddleware',
 ]
 
@@ -162,7 +163,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',

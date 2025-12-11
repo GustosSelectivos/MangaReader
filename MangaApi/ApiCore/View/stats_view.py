@@ -4,6 +4,7 @@ Vista para ver estadísticas de llamadas a la API
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from ApiCore.access_control import DRFDACPermission
 from django.core.cache import cache
 from datetime import datetime
 
@@ -14,7 +15,7 @@ class APIStatsView(APIView):
     GET /api/stats/ - Ver todas las estadísticas
     GET /api/stats/reset/ - Resetear contadores (requiere autenticación)
     """
-    permission_classes = [AllowAny]
+    permission_classes = [DRFDACPermission]
     
     def get(self, request):
         # Obtener todos los contadores

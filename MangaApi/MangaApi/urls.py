@@ -21,7 +21,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from ApiCore.Router.mantenedor_router import router as mantenedor_router
 from ApiCore.Router.manga_router import router as manga_router
 from ApiCore.Router.chapter_router import router as chapter_router
+from ApiCore.Router.dac_router import router as dac_router
 from ApiCore.View.stats_view import APIStatsView, APIStatsResetView
+from ApiCore.View.auth_view import CurrentUserView, UsersListView
+from ApiCore.View.auth_view import CurrentUserPermissionsView
 
 # Include each partial router so those files control their own endpoints
 urlpatterns = [
@@ -33,4 +36,8 @@ urlpatterns = [
     path('api/mantenedor/', include((mantenedor_router.urls, 'mantenedor'))),
     path('api/manga/', include((manga_router.urls, 'manga'))),
     path('api/chapters/', include((chapter_router.urls, 'chapter'))),
+    path('api/dac/', include((dac_router.urls, 'dac'))),
+    path('api/auth/user/', CurrentUserView.as_view(), name='current_user'),
+    path('api/auth/users/', UsersListView.as_view(), name='users_list'),
+    path('api/auth/permissions/', CurrentUserPermissionsView.as_view(), name='current_user_permissions'),
 ]
