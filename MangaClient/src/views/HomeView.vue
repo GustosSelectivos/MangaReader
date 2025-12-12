@@ -45,21 +45,23 @@ watch(isAuthenticated, (val) => {
 
 function setPopularTab(v) {
   popularTab.value = v
-  // Direct mapping: tab key equals trendingFilter (except 'all')
   trendingFilter.value = (v === 'all') ? 'all' : v
-  // Use cached client-side filtered results for instant switching (render list decoupled)
-  switching.value = true
-  const cached = trendingCache.value[v]
-  if (Array.isArray(cached) && cached.length) {
-    displayedTrending.value = cached
-  } else {
-    // Fallback to client-side filter over allPrepared data; keep it snappy
-    displayedTrending.value = getFilteredByTab(v)
-    // Populate cache for subsequent switches
-    trendingCache.value[v] = displayedTrending.value
+  
+  // If cache is empty for this tab, try to fetch it now (if not already invoked)
+  if ((!trendingCache.value[v] || !trendingCache.value[v].length) && v !== 'all') {
+    fetchSpecificTab(v)
   }
-  // Release switching flag next microtask to avoid overlay
-  Promise.resolve().then(() => { switching.value = false })
+
+  // Instant switch if cache exists, otherwise Vue will react when fetchSpecificTab updates cache
+  if (trendingCache.value[v] && trendingCache.value[v].length) {
+    // If it's a proxy from existing data, use it
+     displayedTrending.value = trendingCache.value[v]
+  } else {
+    // Show spinner or empty while loading? Or keep current?
+    // For now we keep current strictly to avoid flicker, or empty array
+    // handled by reactivity on trendingCache
+    displayedTrending.value = [] 
+  }
 }
 function setPendingTab(v) { pendingTab.value = v }
 function setTrendingTab(v) { trendingTab.value = v }
@@ -85,6 +87,63 @@ function normalizeData(raw) {
   return [];
 }
 
+async function processItems(items) {
+  if (!items || !items.length) return []
+  
+  // Ensure demographies are loaded for resolution
+  await preloadDemografias()
+
+  // Process items in parallel (lightweight)
+  return items.map(it => {
+    const copy = { ...it }
+    
+    // Normalize basic fields
+    copy.title = copy.title || copy.titulo || ''
+    
+    // Cover logic: Backend now sends 'cover_url' via optimized serializer
+    // We Map this to 'cover' and 'displayCover' for the template
+    let c = copy.cover_url || copy.cover || copy.url_absoluta || ''
+    if (c && typeof c === 'string' && !c.startsWith('http')) {
+        // If relative, assume keys not needed if backend is doing its job, 
+        // but just in case keeping it simple.
+    }
+    copy.cover = c
+    copy.displayCover = c // No more local probing
+    
+    // Erotic flag
+    if (copy.erotico === true || copy.erotico === false) {
+      copy.erotic = copy.erotico
+    }
+    
+    // Demography resolution
+    let dem = copy.demografia_display || copy.demography || copy.demografia || ''
+    // If numeric ID, resolve from local map
+    if (typeof dem === 'number' || (typeof dem === 'string' && /^\d+$/.test(dem))) {
+       const resolved = demografiasMap.get(Number(dem))
+       if (resolved) {
+         dem = resolved.descripcion
+         copy.dem_color = copy.dem_color || resolved.color
+       }
+    } else if (typeof dem === 'object') {
+       dem = dem.descripcion || dem.name || ''
+    }
+    copy.demography = String(dem || '')
+    
+    // Fallback color
+    if (!copy.dem_color && demografiasMap.size) {
+        // Try to match by name if ID failed
+        for (const [, val] of demografiasMap) {
+            if (val.descripcion === dem) {
+                copy.dem_color = val.color
+                break
+            }
+        }
+    }
+
+    return copy
+  })
+}
+
 async function tryApis() {
   for (const ep of apiCandidates) {
     try {
@@ -100,201 +159,63 @@ async function tryApis() {
   return null
 }
 
-async function resolveLocalCover(item) {
-  // Prefer remote cover; if missing, try to resolve via API before falling back to local assets
-  let remote = item.cover
-  if (!remote || typeof remote !== 'string' || !remote.startsWith('http')) {
-    // Try by possible id fields first
-    try { console.debug('[Home] Resolviendo cover remoto para manga', item.id) } catch (e) {}
-    const byId = await getCoverByIdCached(item.cover_id || item.main_cover_id || item.cover)
-    if (byId) remote = byId
-    else {
-      const viaManga = await getMainCoverCached(item.id)
-      if (viaManga) remote = viaManga
-    }
-  }
-  if (typeof remote === 'string' && remote.startsWith('http')) {
-    return remote
-  }
-  const webp = `/assets/covers/cover_${item.id}.webp`
-  const svg = `/assets/covers/cover_${item.id}.svg`
-  return await new Promise((resolve) => {
-    const test = (src, okCb, failCb) => {
-      const img = new Image()
-      img.onload = () => okCb(src)
-      img.onerror = () => failCb()
-      img.src = src
-    }
-    test(webp, (s) => resolve(s), () => {
-      test(svg, (s) => resolve(s), () => resolve(remote || svg))
-    })
-  })
-}
+
  
  async function loadData() {
   try {
-    // Single fetch: load all mangas and filter on client
-    let data = []
-    try {
-      const rAll = await api.get('manga/mangas/', { params: { page_size: 100 } })
-      data = normalizeData(rAll?.data?.results || rAll?.data)
-    } catch (e) {
-      try {
-        const rAll2 = await api.get('mangas/', { params: { page_size: 100 } })
-        data = normalizeData(rAll2?.data?.results || rAll2?.data)
-      } catch (e2) {
-        let fallbackData = await tryApis()
-        data = normalizeData(fallbackData)
-      }
-    }
-    // Si no hay datos del backend, mantenemos vacío en vez de cargar mocks
-    if (!data || !data.length) {
-      data = []
-    }
+    // Parallel fetching for initial tabs
+    // We only fetch small chunks (limit=10/12) instead of 100+ items
+    const [rPopular, rTrending, rLatest, rMostViewed] = await Promise.all([
+       api.get('manga/mangas/', { params: { limit: 12, ordering: '-vistas' } }), // Popular (All)
+       api.get('manga/mangas/', { params: { limit: 8, ordering: '-creado_en' } }), // Trending (mock logic, using new)
+       api.get('manga/mangas/', { params: { limit: 8, ordering: '-actualizado_en' } }), // Latest
+       api.get('manga/mangas/', { params: { limit: 10, ordering: '-vistas' } })  // Most Viewed Sidebar
+    ])
 
+    // Process data to map covers, demography, etc.
+    // Process data to map covers, demography, etc.
+    populars.value = await processItems(normalizeData(rPopular?.data))
+    trending.value = await processItems(normalizeData(rTrending?.data))
+    latest.value = await processItems(normalizeData(rLatest?.data))
+    mostViewed.value = await processItems(normalizeData(rMostViewed?.data))
 
-    async function resolveDemography(numId) {
-      if (!numId && numId !== 0) return { descripcion: '', color: '' }
-      // Try detail endpoint first
-      try {
-        const k = cache.keyFrom(`mantenedor/demografias/${numId}/`)
-        const c = cache.get(k)
-        const r = c ? { data: c } : await api.get(`mantenedor/demografias/${numId}/`)
-        const d = r?.data || {}
-        return { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
-        cache.set(k, d, 24 * 60 * 60 * 1000)
-      } catch (e) {}
-      // Fallback: list and find
-      try {
-        const p = { page_size: 1000 }
-        const k2 = cache.keyFrom('mantenedor/demografias/', p)
-        const c2 = cache.get(k2)
-        const rl = c2 ? { data: c2 } : await api.get('mantenedor/demografias/', { params: p })
-        const list = Array.isArray(rl.data) ? rl.data : (rl.data?.results || [])
-        const found = list.find(x => String(x.id) === String(numId)) || {}
-        return { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
-        cache.set(k2, list, 24 * 60 * 60 * 1000)
-      } catch (e) {}
-      return { descripcion: '', color: '' }
-    }
-
-    // Pre-resolve main covers in batch to avoid per-item delays
-    const ids = data.map(d => d.id).filter(Boolean)
-    let batchCoverMap = new Map()
-    if (ids.length) {
-      try {
-        batchCoverMap = await getMainCoversBatch(ids)
-      } catch (e) { batchCoverMap = new Map() }
-    }
-
-    const prepared = await Promise.all(data.map(async (it) => {
-      const copy = { ...it }
-      // Normalize title from backend key 'titulo'
-      copy.title = copy.title || copy.titulo || ''
-      // Prefer backend-provided cover_url when available
-      copy.cover = copy.cover || copy.cover_url || copy.cover_image || copy.url_absoluta || copy.url_imagen || copy.portada || ''
-      // Evitar usar assets locales como /assets/covers/cover_#.svg para forzar remoto
-      if (typeof copy.cover === 'string' && (copy.cover.endsWith('.svg') || copy.cover.startsWith('/assets/covers/'))) {
-        copy.cover = ''
-      }
-      // If no remote cover present, try fetching by cover id or via covers API
-      if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-        // First try batch prefetch, then individual cache lookups
-        const pre = batchCoverMap.get(String(copy.id))
-        if (pre) copy.cover = pre
-        else {
-          const byId = await getCoverByIdCached(copy.cover_id || copy.main_cover_id || copy.cover)
-          if (byId) copy.cover = byId
-          else {
-            const c = await getMainCoverCached(copy.id)
-            if (c) copy.cover = c
-          }
-        }
-      }
-      // Prefer remote cover for display when available
-      copy.displayCover = await resolveLocalCover(copy)
-      // If still a local asset (e.g., SVG), force remote main cover
-      if (typeof copy.displayCover === 'string' && copy.displayCover.startsWith('/assets/covers/')) {
-        const forced = await getMainCoverCached(copy.id)
-        if (forced) copy.displayCover = forced
-      }
-      if (!copy.score) copy.score = copy.rating || copy.puntaje || 'N/A'
-      // Map backend erotico -> frontend erotic
-      if (copy.erotico === true || copy.erotico === false) {
-        copy.erotic = copy.erotico
-      }
-      // Normalize demography to a readable string (prefer server-resolved display)
-      let dem = copy.demografia_display || copy.demography || copy.demografia || copy.type || ''
-      if (Array.isArray(dem)) dem = dem.join(' ')
-      if (dem && typeof dem === 'object') dem = dem.descripcion || dem.description || dem.name || dem.title || dem.label || JSON.stringify(dem)
-      // If it's a numeric ID, resolve via mantenedor endpoints
-      if (typeof dem === 'number') {
-        const resolved = await resolveDemography(dem)
-        dem = resolved.descripcion || ''
-        copy.dem_color = copy.dem_color || resolved.color || ''
-      }
-      copy.demography = String(dem || '')
-      // Carry color if available from object payload
-      copy.dem_color = copy.dem_color || copy.demografia_color || (copy.demografia && (copy.demografia.color || copy.demografia.dem_color)) || ''
-      return copy
-    }))
-
-    // Exclude erotic content from initial lists
-    const nonEroticPrepared = prepared.filter(i => i.erotic !== true)
-    populars.value = nonEroticPrepared.slice(0, 12)
-    trending.value = nonEroticPrepared.slice(0, 8)
+    // Initialize displayed lists
     displayedTrending.value = trending.value
-    // Warm caches for fast tab switching
-    trendingCache.value.all = nonEroticPrepared
-    trendingCache.value.shonen = nonEroticPrepared.filter(i => String(i.demography || '').toLowerCase().includes('shon'))
-    trendingCache.value.seinen = nonEroticPrepared.filter(i => String(i.demography || '').toLowerCase().includes('sein'))
-    // Erotic list cached separately (resolved with isErotic to be consistent)
-    trendingCache.value.erotico = prepared.filter(i => isErotic(i) === true)
-    latest.value = nonEroticPrepared.slice(4, 12)
+    
+    // Cache "All" tab
+    trendingCache.value.all = populars.value
 
-    // Try to load most viewed from API (ordering by vistas desc)
-    try {
-      let r
-      try {
-        r = await api.get('manga/mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false } })
-      } catch (e) {
-        r = await api.get('mangas/', { params: { ordering: '-vistas', limit: 10, page_size: 10, erotico: false } })
-      }
-      const raw = r?.data?.results || r?.data || []
-      const norm = normalizeData(raw)
-      // Prefetch covers for most viewed in parallel
-      const mvIds = norm.slice(0, 10).map(i => i.id).filter(Boolean)
-      let mvBatchMap = new Map()
-      if (mvIds.length) {
-        try { mvBatchMap = await getMainCoversBatch(mvIds) } catch (e) { mvBatchMap = new Map() }
-      }
-      const prepped = await Promise.all(norm.slice(0, 10).map(async (it) => {
-        const copy = { ...it }
-        // Prefer batch cover if missing
-        if (!copy.cover || typeof copy.cover !== 'string' || !copy.cover.startsWith('http')) {
-          const pre = mvBatchMap.get(String(copy.id))
-          if (pre) copy.cover = pre
-        }
-        copy.displayCover = await resolveLocalCover(copy)
-        // Normalize title key differences
-        copy.title = copy.title || copy.titulo || ''
-        // Map erotico -> erotic if provided in this list
-        if (copy.erotico === true || copy.erotico === false) {
-          copy.erotic = copy.erotico
-        }
-        return copy
-      }))
-      // Exclude erotic in sidebar 'Más vistos'
-      mostViewed.value = prepped.filter(i => i.erotic !== true)
-    } catch (e) {
-      // Fallback: approximate mostViewed by using prepared list (no views available)
-      mostViewed.value = prepared.filter(i => i.erotic !== true).slice(0, 10)
-    }
+    // Pre-fetch other tabs in background to make switching instant, but lazily
+    fetchSpecificTab('shonen')
+    fetchSpecificTab('seinen')
+    if (isAuthenticated.value) fetchSpecificTab('erotico')
+
   } catch (e) {
-    error.value = e.message
+    console.error("Error loading home data", e)
+    error.value = "Error cargando contenido."
   } finally {
     loading.value = false
   }
+}
+
+async function fetchSpecificTab(type) {
+  if (trendingCache.value[type] && trendingCache.value[type].length) return
+  try {
+    let params = { limit: 12, ordering: '-vistas' }
+    if (type === 'erotico') params.erotico = 'true'
+    else if (type === 'shonen') params.demografia = 'Shonen' // Adjust if backend expects ID
+    else if (type === 'seinen') params.demografia = 'Seinen'
+
+    // If backend requires ID for demography, we rely on ensureDemografiaIds
+    if ((type === 'shonen' || type === 'seinen') && demografiaIds.value[type]) {
+        delete params.demografia
+        params.demografia = demografiaIds.value[type]
+    }
+
+    const res = await api.get('manga/mangas/', { params })
+    const data = await processItems(normalizeData(res?.data))
+    trendingCache.value[type] = data
+  } catch (e) {}
 }
 
 async function fetchDemografiaIds() {
@@ -397,6 +318,11 @@ function loadTrendingFiltered() {
   }
   displayedTrending.value = baseAll
 }
+
+const filteredMostViewed = computed(() => {
+  if (isAuthenticated.value) return mostViewed.value
+  return mostViewed.value.filter(i => !isErotic(i))
+})
 
 onMounted(async () => {
   await fetchDemografiaIds()
@@ -670,7 +596,7 @@ function isErotic(item) {
             <div class="card rank p-3">
               <h5>Más vistos</h5>
               <div class="ranked-list">
-                <div class="ranked-item" v-for="(t, idx) in mostViewed.slice(0,10)" :key="`rank-${t.id}`">
+                <div class="ranked-item" v-for="(t, idx) in filteredMostViewed.slice(0,10)" :key="`rank-${t.id}`">
                   <div class="position">{{ idx + 1 }}.</div>
                   <div class="description">{{ t.title }}</div>
                 </div>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
+import axios from 'axios'
 
 // Inputs
 const mangaId = ref('')
@@ -200,38 +201,100 @@ async function loadSelectedChapter() {
   }
 }
 
+const selectedFiles = ref([])
+const uploadProgress = ref(0)
+const totalUploads = ref(0)
+
+function handleFiles(event) {
+  const files = Array.from(event.target.files || [])
+  // Sort by name ensures 1.jpg, 2.jpg order if named correctly
+  selectedFiles.value = files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  pagesCount.value = files.length
+}
+
+async function uploadFileToB2(file, index) {
+  const ext = 'webp' // Force webp or keep original? Plan said rename to .webp
+  // To keep it simple and consistent with buildImageUrls logic:
+  // We will rename the file to {001}.webp
+  const filename = `${pad3(index + 1)}.${ext}`
+  const code = seriesCode.value.trim()
+  const chap = normalizedChapterNumber.value
+  const path = `chapters/${code}/${chap}/${filename}`
+  
+  // 1. Get signed URL
+  const { data } = await api.post('upload/sign/', { 
+    file_path: path,
+    content_type: 'image/webp' 
+  })
+  
+  if (!data.url) throw new Error('No signed URL returned')
+
+  // 2. Upload to B2
+  await axios.put(data.url, file, {
+    headers: { 'Content-Type': 'image/webp' }
+  })
+}
+
 async function submit() {
   error.value = ''
   message.value = ''
   const payload = chapterPayload.value
+  
   if (!payload.manga || !payload.capitulo_numero || !normalizedPagesCount.value || !seriesCode.value) {
     error.value = 'Completa Manga, Código de serie, Número y Cantidad de páginas.'
     return
   }
-  if (!payload.pages || !Array.isArray(payload.pages.images) || !payload.pages.images.length) {
-    error.value = 'No se pudieron generar las URLs de imágenes. Revisa el código, número y páginas.'
-    return
+  
+  if (!selectedFiles.value.length) {
+    if (!payload.pages || !Array.isArray(payload.pages.images) || !payload.pages.images.length) {
+      error.value = 'No has seleccionado archivos y el generador de URLs está vacío.'
+      return
+    }
+    // If no files selected but user wants to just create DB record (legacy mode)
   }
+
   uploading.value = true
+  uploadProgress.value = 0
+  totalUploads.value = selectedFiles.value.length
+
   try {
-    // Envía JSON con `images` y metadatos del capítulo
-    // Ajusta endpoint real cuando exista en el backend
+    // 1. Upload files if any
+    if (selectedFiles.value.length > 0) {
+      let completed = 0
+      // Upload sequential
+      for (let i = 0; i < selectedFiles.value.length; i++) {
+        await uploadFileToB2(selectedFiles.value[i], i)
+        completed++
+        uploadProgress.value = Math.round((completed / totalUploads.value) * 100)
+      }
+    }
+
+    // 2. Create Chapter in DB
     const { createChapter } = await import('@/services/chapterService')
     await createChapter(payload)
-    message.value = 'Capítulo creado y subido correctamente.'
-    // Limpia el formulario
+    
+    // 3. Reset
+    message.value = 'Capítulo subido y creado correctamente.'
     chapterNumber.value = ''
     chapterTitle.value = ''
     volume.value = ''
     pagesCount.value = ''
+    selectedFiles.value = []
+    // Reset file input
+    document.getElementById('fileInput').value = ''
+    
   } catch (e) {
-    error.value = e.message || 'Error al subir capítulo'
+    console.error(e)
+    error.value = e.message || 'Error al subir capítulos'
   } finally {
     uploading.value = false
+    uploadProgress.value = 0
   }
 }
 
 async function updateChapter() {
+  // Logic remains mostly same, but maybe allow re-uploading pages? 
+  // For now, keep as metadata update only unless requested.
   error.value = ''
   message.value = ''
   if (!selectedChapterId.value) {
@@ -239,14 +302,6 @@ async function updateChapter() {
     return
   }
   const payload = chapterPayload.value
-  if (!payload.manga || !payload.capitulo_numero || !normalizedPagesCount.value || !seriesCode.value) {
-    error.value = 'Completa Manga, Código de serie, Número y Cantidad de páginas.'
-    return
-  }
-  if (!payload.pages || !Array.isArray(payload.pages.images) || !payload.pages.images.length) {
-    error.value = 'No se pudieron generar las URLs de imágenes. Revisa el código, número y páginas.'
-    return
-  }
   uploading.value = true
   try {
     await api.patch(`chapters/chapters/${selectedChapterId.value}/`, payload)
@@ -299,9 +354,14 @@ async function updateChapter() {
           <label class="form-label">Volumen</label>
           <input v-model="volume" type="number" class="form-control" placeholder="Opcional" />
         </div>
+        <div class="col-md-12">
+          <label class="form-label">Archivos del Capítulo (Imágenes)</label>
+          <input id="fileInput" type="file" multiple accept="image/*" class="form-control" @change="handleFiles" />
+          <small class="text-muted">Selecciona las imágenes en orden. Se renombrarán automáticamente a 001.webp, 002.webp, etc.</small>
+        </div>
         <div class="col-md-4">
           <label class="form-label">Cantidad de páginas</label>
-          <input v-model="pagesCount" type="number" min="1" max="999" class="form-control" placeholder="Ej: 90" />
+          <input v-model="pagesCount" type="number" min="1" max="999" class="form-control" placeholder="Calculado autom." />
         </div>
         <div class="col-12">
           <label class="form-label">Título del capítulo</label>
@@ -317,8 +377,11 @@ async function updateChapter() {
 
       <div>
         <button :disabled="uploading" class="btn btn-primary me-2">
-          <span v-if="uploading">Subiendo...</span><span v-else>Subir capítulo</span>
+          <span v-if="uploading">Subiendo... {{ uploadProgress }}%</span><span v-else>Subir capítulo</span>
         </button>
+        <div v-if="uploading" class="progress mt-2" style="height: 5px;">
+          <div class="progress-bar" role="progressbar" :style="{ width: uploadProgress + '%' }"></div>
+        </div>
         <button type="button" :disabled="uploading || !selectedChapterId" class="btn btn-outline-success" @click="updateChapter">
           <span v-if="uploading">Guardando...</span><span v-else>Guardar cambios en capítulo</span>
         </button>

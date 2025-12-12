@@ -35,8 +35,10 @@ const mangaForm = ref({
 // Related data
 const titulosAlternativos = ref([])
 const covers = ref([])
+const coversToDelete = ref([])
 const autoresExtra = ref([])
 const tagsSeleccionados = ref([])
+const coverFile = ref(null)
 
 // Catalogs
 const estados = ref([])
@@ -262,16 +264,16 @@ async function searchMangas() {
 async function loadRelatedForManga(mangaId) {
   try {
     const alts = await listAltTitulos({ manga: mangaId, page_size: 1000 })
-    titulosAlternativos.value = alts.map(x => ({ titulo: x.titulo || x.title || '', codigo_lenguaje: x.codigo_lenguaje || 'es', vigente: x.vigente !== false }))
+    titulosAlternativos.value = alts.map(x => ({ id: x.id, titulo_alternativo: x.titulo_alternativo || x.titulo || x.title || '', codigo_lenguaje: x.codigo_lenguaje || 'es', vigente: x.vigente !== false }))
   } catch { titulosAlternativos.value = [] }
   try {
     const cvs = await listCovers({ manga: mangaId, page_size: 1000 })
-    covers.value = cvs.map(x => ({ url_imagen: x.url_imagen || x.url || '', tipo_cover: x.tipo_cover || 'main', vigente: x.vigente !== false }))
+    covers.value = cvs.map(x => ({ id: x.id, url_imagen: x.url_imagen || x.url || '', tipo_cover: x.tipo_cover || 'main', vigente: x.vigente !== false }))
     updatePreview()
   } catch { covers.value = [] }
   try {
     const auts = await listAutoresRel({ manga: mangaId, page_size: 1000 })
-    autoresExtra.value = auts.map(x => ({ autor_id: x.autor?.id || x.autor || null, rol: x.rol || 'author', vigente: x.vigente !== false }))
+    autoresExtra.value = auts.map(x => ({ id: x.id, autor_id: x.autor?.id || x.autor || null, rol: x.rol || 'author', vigente: x.vigente !== false }))
   } catch { autoresExtra.value = [] }
   try {
     const tgs = await listTagsRel({ manga: mangaId, page_size: 1000 })
@@ -287,6 +289,7 @@ async function loadRelatedForManga(mangaId) {
 async function selectSerie(serie) {
   if (!catalogsLoaded.value) await loadCatalogs()
   selectedSerie.value = serie
+  editingManga.value = serie
   currentView.value = 'form'
   mangaForm.value = {
     codigo: serie.codigo || '',
@@ -325,12 +328,18 @@ function startFresh() {
     vigente: true
   }
   
+  
   titulosAlternativos.value = []
   covers.value = []
+  coversToDelete.value = []
   autoresExtra.value = []
   tagsSeleccionados.value = []
   previewUrl.value = ''
   lastAutoCode.value = ''
+  coverFile.value = null
+  // Reset file input if exists
+  const fileInput = document.getElementById('coverFileUpload')
+  if (fileInput) fileInput.value = ''
 }
 
 // Forzar que los selects queden con el valor actual del formulario
@@ -373,6 +382,10 @@ function addCover() {
 }
 
 function removeCover(index) {
+  const item = covers.value[index]
+  if (item.id) {
+    coversToDelete.value.push(item)
+  }
   covers.value.splice(index, 1)
 }
 
@@ -396,6 +409,17 @@ function removeAutorExtra(index) {
 
 // Para comparar tags existentes al editar
 const existingTagIds = ref([])
+
+function handleFileChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    coverFile.value = file
+    // Preview local
+    previewUrl.value = URL.createObjectURL(file)
+  } else {
+    coverFile.value = null
+  }
+}
 
 // Save manga
 async function saveManga() {
@@ -438,11 +462,43 @@ async function saveManga() {
 
     let mangaId
     if (editingManga.value) {
-      const response = await api.patch(`manga/mangas/${editingManga.value.id}/`, payload)
-      mangaId = response.data.id
+      // Edit: check if we have a file to upload
+      if (coverFile.value) {
+        const formData = new FormData()
+        Object.keys(payload).forEach(key => {
+          if (payload[key] !== null && payload[key] !== undefined) {
+             formData.append(key, payload[key])
+          }
+        })
+        formData.append('cover_image', coverFile.value)
+        
+        const response = await api.patch(`manga/mangas/${editingManga.value.id}/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        mangaId = response.data.id
+      } else {
+        const response = await api.patch(`manga/mangas/${editingManga.value.id}/`, payload)
+        mangaId = response.data.id
+      }
     } else {
-      const response = await api.post('manga/mangas/', payload)
-      mangaId = response.data.id
+      // Creation: check if we have a file to upload
+      if (coverFile.value) {
+        const formData = new FormData()
+        Object.keys(payload).forEach(key => {
+          if (payload[key] !== null && payload[key] !== undefined) {
+             formData.append(key, payload[key])
+          }
+        })
+        formData.append('cover_image', coverFile.value)
+        
+        const response = await api.post('manga/mangas/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        mangaId = response.data.id
+      } else {
+        const response = await api.post('manga/mangas/', payload)
+        mangaId = response.data.id
+      }
     }
     
     // Títulos alternativos: PATCH si existe id, POST si no
@@ -467,7 +523,23 @@ async function saveManga() {
     }
     
     // Covers: PATCH si id, POST si no
-    for (const cover of covers.value) {
+    // Clone covers list to avoid modifying the UI bound array
+    const coversToSync = [...covers.value]
+    
+    // CRITICAL: If we uploaded a new Main Cover file (coverFile), the backend (MangaSerializer)
+    // automatically sets all previous 'main' covers to vigente=False.
+    // If we include those same 'main' covers in this update loop with vigente=True (from UI),
+    // we will undo the backend's work and create duplicates.
+    // So, if coverFile exists, we SKIP syncing any 'main' cover from the list.
+    if (coverFile.value) {
+      for (let i = coversToSync.length - 1; i >= 0; i--) {
+         if (coversToSync[i].tipo_cover === 'main') {
+           coversToSync.splice(i, 1)
+         }
+      }
+    }
+
+    for (const cover of coversToSync) {
       if (cover.url_imagen && cover.url_imagen.trim()) {
         if (cover.id) {
           await api.patch(`manga/manga-covers/${cover.id}/`, {
@@ -484,6 +556,17 @@ async function saveManga() {
             vigente: cover.vigente
           })
         }
+      }
+    }
+
+
+    // Process deleted covers
+    for (const dCover of coversToDelete.value) {
+      if (dCover.id) {
+        // Option A: Hard Delete
+        // await api.delete(`manga/manga-covers/${dCover.id}/`)
+        // Option B: Soft Delete (Vigente = false) - Safer
+        await api.patch(`manga/manga-covers/${dCover.id}/`, { vigente: false })
       }
     }
     
@@ -512,6 +595,7 @@ async function saveManga() {
     const toCreate = tagsSeleccionados.value
       .map(x => Number(x))
       .filter(x => !existingTagIds.value.includes(x))
+
     for (const tagId of toCreate) {
       await api.post('manga/manga-tags/', { manga: mangaId, tag: tagId, vigente: true })
     }
@@ -780,6 +864,20 @@ watch(() => mangaForm.value.titulo, (t) => {
               </div>
             </div>
             
+
+            
+            <!-- Upload Cover File (Creation & Edit) -->
+            <div class="col-12 mt-3">
+              <div class="alert alert-info" v-if="!editingManga">
+                <strong>Nuevo:</strong> Puedes subir la portada principal directamente aquí. Se creará automáticamente la entrada en Covers.
+              </div>
+              <div class="alert alert-warning" v-else>
+                <strong>Editar Portada:</strong> Si subes un archivo aquí, se agregará como nueva portada principal.
+              </div>
+              <label class="form-label">Subir Portada Principal (Archivo)</label>
+              <input type="file" id="coverFileUpload" class="form-control" accept="image/*" @change="handleFileChange" />
+            </div>
+
             <!-- Preview -->
             <div class="col-md-4">
               <div class="cover-preview">

@@ -25,6 +25,7 @@ from ApiCore.Router.dac_router import router as dac_router
 from ApiCore.View.stats_view import APIStatsView, APIStatsResetView
 from ApiCore.View.auth_view import CurrentUserView, UsersListView
 from ApiCore.View.auth_view import CurrentUserPermissionsView
+from ApiCore.View.b2_view import B2UploadSignView
 
 # Include each partial router so those files control their own endpoints
 urlpatterns = [
@@ -40,4 +41,5 @@ urlpatterns = [
     path('api/auth/user/', CurrentUserView.as_view(), name='current_user'),
     path('api/auth/users/', UsersListView.as_view(), name='users_list'),
     path('api/auth/permissions/', CurrentUserPermissionsView.as_view(), name='current_user_permissions'),
+    path('api/upload/sign/', B2UploadSignView.as_view(), name='upload_sign'),
 ]

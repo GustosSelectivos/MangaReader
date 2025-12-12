@@ -41,7 +41,7 @@ class manga_alt_titulo(models.Model):
 
 class manga_cover(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MCV_ID')
-    manga = models.ForeignKey(manga, on_delete=models.PROTECT, db_column='MCV_MANGA_ID')
+    manga = models.ForeignKey(manga, on_delete=models.PROTECT, db_column='MCV_MANGA_ID', related_name='covers')
     url_imagen = models.CharField(max_length=255, null=False, db_column='MCV_URL_IMAGEN')
     cover_tipo = [
         ("main", "main"),
@@ -73,7 +73,7 @@ class manga_autor(models.Model):
 
 class manga_tag(models.Model):
     id = models.BigAutoField(primary_key=True, db_column='MTG_ID')
-    manga = models.ForeignKey(manga, on_delete=models.PROTECT, db_column='MTG_MANGA_ID')
+    manga = models.ForeignKey(manga, on_delete=models.PROTECT, db_column='MTG_MANGA_ID', related_name='tags')
     tag = models.ForeignKey(tags, on_delete=models.PROTECT, db_column='MTG_TAG_ID')
     vigente = models.BooleanField(default=True, null=False, db_column='MTG_VIGENTE')
     

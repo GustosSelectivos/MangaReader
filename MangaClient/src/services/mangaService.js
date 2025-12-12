@@ -11,7 +11,7 @@ export async function listMangas(params = {}) {
     if (Array.isArray(data)) cache.set(key, data, 5 * 60 * 1000)
     return data
   } catch {
-    const res = await api.get('mangas/', { params })
+    const res = await api.get('manga/mangas/', { params })
     const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.mangas || [])
     return data
   }
@@ -33,7 +33,7 @@ export async function getManga(id) {
 
 export async function incrementMangaView(id) {
   if (!id) return
-  try { await api.post(`manga/mangas/${id}/increment-view/`) } catch {}
+  try { await api.post(`manga/mangas/${id}/increment-view/`) } catch { }
 }
 
 export async function listMangaCovers(params = {}) {
@@ -53,7 +53,7 @@ export async function fetchCoverById(possibleId) {
     const obj = await getMangaCover(cid)
     if (typeof obj.url_absoluta === 'string') return obj.url_absoluta
     if (typeof obj.url_imagen === 'string') return obj.url_imagen
-  } catch {}
+  } catch { }
   return null
 }
 
@@ -63,19 +63,19 @@ export async function getMainCoverForManga(id) {
     const main = list1.find(c => c.tipo_cover === 'main') || list1[0]
     if (main && typeof main.url_absoluta === 'string' && isValidCdn(main.url_absoluta)) return main.url_absoluta
     if (main && typeof main.url_imagen === 'string' && isValidCdn(main.url_imagen)) return main.url_imagen
-  } catch {}
+  } catch { }
   try {
     const listAll = await listMangaCovers({ vigente: true, page_size: 1000 })
     const forManga = listAll.filter(c => String(c.manga) === String(id))
     const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
     if (main2 && typeof main2.url_absoluta === 'string' && isValidCdn(main2.url_absoluta)) return main2.url_absoluta
     if (main2 && typeof main2.url_imagen === 'string' && isValidCdn(main2.url_imagen)) return main2.url_imagen
-  } catch {}
+  } catch { }
   return null
 }
 
 // Accept only http(s) and avoid known bad domains/placeholders
-export function isValidCdn(url){
+export function isValidCdn(url) {
   if (!url || typeof url !== 'string') return false
   const u = url.trim().toLowerCase()
   if (!u.startsWith('http://') && !u.startsWith('https://')) return false
