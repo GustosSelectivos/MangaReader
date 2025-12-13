@@ -8,7 +8,7 @@ from ApiCore.Filter.chapter_filters import ChapterFilter
 
 
 class ChapterViewSet(viewsets.ModelViewSet):
-    queryset = chapter.objects.all()
+    queryset = chapter.objects.select_related('manga').all()
     serializer_class = ChapterSerializer
     permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]

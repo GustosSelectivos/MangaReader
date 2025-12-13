@@ -14,7 +14,7 @@ from ApiCore.access_control import DRFDACPermission
 
 
 class MangaViewSet(viewsets.ModelViewSet):
-    queryset = manga.objects.all().prefetch_related('covers', 'demografia', 'estado', 'autor', 'tags__tag')
+    queryset = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
     serializer_class = MangaSerializer
     # Use DAC permission: read allowed to all, writes require DAC 'write' on the object
     permission_classes = [DRFDACPermission]
@@ -43,9 +43,24 @@ class MangaViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({ 'detail': str(e) }, status=400)
 
+    @action(detail=False, methods=['get'], url_path='random')
+    def random(self, request):
+        """Return 5 random items, potentially filtering by user context (e.g. strict mode)."""
+        qs = self.get_queryset()
+        # If user is not authenticated, exclude erotic content by default? 
+        # For now, following user request: "5 series al azar dependiendo de si estas logueado o no"
+        if not request.user.is_authenticated:
+            qs = qs.filter(erotico=False)
+        
+        # Random ordering using database function (efficient for small tables, careful for huge ones)
+        # For SQLite/Postgres '?' works. 
+        random_items = qs.order_by('?')[:5]
+        serializer = self.get_serializer(random_items, many=True)
+        return Response(serializer.data)
+
 
 class MangaAltTituloViewSet(viewsets.ModelViewSet):
-    queryset = manga_alt_titulo.objects.all()
+    queryset = manga_alt_titulo.objects.select_related('manga').all()
     serializer_class = MangaAltTituloSerializer
     permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -54,7 +69,7 @@ class MangaAltTituloViewSet(viewsets.ModelViewSet):
 
 
 class MangaCoverViewSet(viewsets.ModelViewSet):
-    queryset = manga_cover.objects.all()
+    queryset = manga_cover.objects.select_related('manga').all()
     serializer_class = MangaCoverSerializer
     permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -64,7 +79,7 @@ class MangaCoverViewSet(viewsets.ModelViewSet):
 
 
 class MangaAutorViewSet(viewsets.ModelViewSet):
-    queryset = manga_autor.objects.all()
+    queryset = manga_autor.objects.select_related('manga', 'autor').all()
     serializer_class = MangaAutorSerializer
     permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -73,7 +88,7 @@ class MangaAutorViewSet(viewsets.ModelViewSet):
 
 
 class MangaTagViewSet(viewsets.ModelViewSet):
-    queryset = manga_tag.objects.all()
+    queryset = manga_tag.objects.select_related('manga', 'tag').all()
     serializer_class = MangaTagSerializer
     permission_classes = [DRFDACPermission]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]

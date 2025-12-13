@@ -18,7 +18,7 @@ MODEL_MAP = {
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """Manage profiles (Django Groups) and allow assigning users and group grants."""
-    queryset = Group.objects.all()
+    queryset = Group.objects.prefetch_related('user_set').all()
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -113,5 +113,5 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 
 class AccessGrantViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = AccessGrant.objects.all()
+    queryset = AccessGrant.objects.select_related('permission', 'user', 'group', 'content_type').all()
     serializer_class = AccessGrantSerializer

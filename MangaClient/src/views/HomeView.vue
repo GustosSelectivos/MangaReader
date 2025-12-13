@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import cache from '@/services/cache'
 import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
+import HomeBanner from '@/components/HomeBanner.vue'
 
 const populars = ref([])
 const trending = ref([])
@@ -441,6 +442,12 @@ function isErotic(item) {
     </div>
 
     <div class="home-layout" v-else>
+      
+      <!-- Integration of Banner -->
+       <div class="col-12 mb-4" style="grid-column: 1 / -1;">
+         <HomeBanner />
+       </div>
+
       <div class="home-main">
 
           <!-- Populares / Tabs -->
@@ -636,7 +643,8 @@ function isErotic(item) {
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 @media (min-width: 1600px) { .cards-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); } }
 .card-item { list-style:none; }
-.card-link { text-decoration:none; display:block; }
+.card-link { text-decoration:none; display:block; outline: none; border: none; }
+.card-link:hover, .card-link:focus { outline: none; border: none; }
 .book-type { position: absolute; right:8px; top:8px; background: rgba(0,0,0,0.65); padding:3px 6px; border-radius:4px; font-size:11px }
 .thumbnail-type-bar { position:absolute; left:0; right:0; bottom:0; padding:4px 6px 5px; font-size:12px; font-weight:600; letter-spacing:.3px; background:linear-gradient(90deg, var(--type-bar-color, rgba(0,0,0,0.65)) 0%, rgba(0,0,0,0.4) 100%); color:#fff; }
 .type-manga { --type-bar-color:#1e88e5; }
@@ -656,6 +664,24 @@ function isErotic(item) {
 @media (min-width: 1200px) {
   .home-view { padding-left: 32px; padding-right: 32px; }
   .home-view .col-12.col-lg-8.col-xl-9 { padding-left: 0; }
+  
+  /* Advanced Hover Effects for PC */
+  .cards-grid:hover .card-item {
+      transition: all 0.4s ease;
+      filter: blur(2px) opacity(0.7);
+      transform: scale(0.98);
+  }
+  .cards-grid .card-item:hover {
+      filter: none;
+      opacity: 1;
+      transform: scale(1.1) translateY(-5px);
+      z-index: 100;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  }
+  /* Reset transition for non-hovered state to avoid laggy feeling on mouseout */
+  .cards-grid .card-item {
+      transition: all 0.4s ease;
+  }
 }
 
 @media (max-width: 576px) {
