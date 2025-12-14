@@ -5,6 +5,7 @@ import api from '@/services/api'
 import cache from '@/services/cache'
 import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
 import HomeBanner from '@/components/HomeBanner.vue'
+import MostViewedCarousel from '@/components/MostViewedCarousel.vue'
 
 const populars = ref([])
 const trending = ref([])
@@ -170,7 +171,7 @@ async function tryApis() {
        api.get('manga/mangas/', { params: { limit: 12, ordering: '-vistas' } }), // Popular (All)
        api.get('manga/mangas/', { params: { limit: 8, ordering: '-creado_en' } }), // Trending (mock logic, using new)
        api.get('manga/mangas/', { params: { limit: 8, ordering: '-actualizado_en' } }), // Latest
-       api.get('manga/mangas/', { params: { limit: 10, ordering: '-vistas' } })  // Most Viewed Sidebar
+       api.get('manga/mangas/', { params: { limit: 30, ordering: '-vistas' } })  // Most Viewed Sidebar (fetched more to allow filtering)
     ])
 
     // Process data to map covers, demography, etc.
@@ -567,6 +568,8 @@ function isErotic(item) {
           <div class="row mt-3">
             <div class="col">
               <h2 class="mt-3">Series Disponibles</h2>
+
+
               <div class="cards-grid cards-grid--trending">
                 <div v-for="item in (popularTab === 'erotico' 
                     ? displayedTrending.filter(i => isErotic(i)) 
@@ -583,44 +586,23 @@ function isErotic(item) {
               </div>
             </div>
           </div>
-
           
-
-          
-
-          <!-- Trending section removed: series are shown in the Populares section -->
-
-
+           <!-- Carousel Integration Moved to Bottom -->
+           <div class="row mt-5 mb-4" v-if="filteredMostViewed && filteredMostViewed.length">
+             <div class="col-12">
+               <h3 class="mb-3">Más vistos</h3>
+               <MostViewedCarousel :items="filteredMostViewed.slice(0, 10)" />
+             </div>
+           </div>
       </div>
-
-      <!-- Sidebar -->
-      <aside class="home-sidebar">
-          <div v-if="isAuthenticated && isSuperuser" class="text-center mb-3">
-            <a href="/dev/upload" class="btn btn-primary btn-lg w-100"><i class="fas fa-upload"></i> Subir capítulo</a>
-          </div>
-
-          <div class="mt-2 text-center rank-wrapper">
-            <div class="card rank p-3">
-              <h5>Más vistos</h5>
-              <div class="ranked-list">
-                <div class="ranked-item" v-for="(t, idx) in filteredMostViewed.slice(0,10)" :key="`rank-${t.id}`">
-                  <div class="position">{{ idx + 1 }}.</div>
-                  <div class="description">{{ t.title }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
-
   </div>
 </template>
 
 <style scoped>
 .home-view { padding-left: 16px; padding-right: 16px; max-width:1600px; margin:0 auto; }
-.home-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
-@media (min-width: 992px) { .home-layout { grid-template-columns: 3.5fr 1fr; } }
-@media (min-width: 1400px) { .home-layout { grid-template-columns: 5fr 1.2fr; } }
+.home-layout { display: block; }
+/* Modified layout to be single column as per request to remove sidebar section */
 .home-main { min-width:0; }
 .home-sidebar { min-width:0; position:sticky; top:90px; align-self:start; }
 
@@ -666,14 +648,10 @@ function isErotic(item) {
   .home-view .col-12.col-lg-8.col-xl-9 { padding-left: 0; }
   
   /* Advanced Hover Effects for PC */
-  .cards-grid:hover .card-item {
-      transition: all 0.4s ease;
-      filter: blur(2px) opacity(0.7);
-      transform: scale(0.98);
-  }
+  /* Advanced Hover Effects for PC removed as per request */
+  /* .cards-grid:hover .card-item { ... } removed */
+  
   .cards-grid .card-item:hover {
-      filter: none;
-      opacity: 1;
       transform: scale(1.1) translateY(-5px);
       z-index: 100;
       box-shadow: 0 10px 20px rgba(0,0,0,0.5);

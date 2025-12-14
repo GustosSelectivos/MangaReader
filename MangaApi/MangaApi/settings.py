@@ -198,6 +198,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.miswebtoons.uk",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "https://mangareader-production.up.railway.app",
     "https://manga-reader-bv4.pages.dev",
 ]
@@ -234,6 +236,8 @@ CORS_ALLOW_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "https://www.miswebtoons.uk",
     "https://mangareader-production.up.railway.app",
     "https://manga-reader-bv4.pages.dev",

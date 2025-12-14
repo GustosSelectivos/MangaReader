@@ -46,38 +46,49 @@ const router = createRouter({
       component: ChapterView,
       props: true,
     },
-    // Legacy alias: redirect /uploads to the protected upload screen
-    { path: '/uploads', redirect: '/dev/upload' },
-    // Protected development/admin routes
+    // Legacy alias: redirect /uploads and /dev/uploads etc
+    { path: '/uploads', redirect: '/admin/upload' },
+
+    // New Unified Admin Panel
     {
-      path: '/dev/upload',
-      name: 'dev-upload',
-      component: UploadChapterView,
+      path: '/admin',
+      component: () => import('../layouts/AdminLayout.vue'),
       meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'admin-dashboard',
+          component: () => import('../views/AdminDashboardView.vue'),
+        },
+        {
+          path: 'upload',
+          name: 'admin-upload',
+          component: UploadChapterView,
+        },
+        {
+          path: 'mantenedores',
+          name: 'admin-mantenedores',
+          component: MantenedoresAdminView,
+        },
+        {
+          path: 'mangas',
+          name: 'admin-mangas',
+          component: MangasAdminView,
+        },
+        {
+          path: 'profiles',
+          name: 'admin-profiles',
+          component: () => import('../views/ProfilesAdminView.vue'),
+        },
+      ]
     },
-    {
-      path: '/dev/mantenedores',
-      name: 'dev-mantenedores',
-      component: MantenedoresAdminView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/dev/mangas',
-      name: 'dev-mangas',
-      component: MangasAdminView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/dev/profiles',
-      name: 'dev-profiles',
-      component: () => import('../views/ProfilesAdminView.vue'),
-      meta: { requiresAuth: true },
-    },
-    // Redirect legacy creator path to unified admin view
-    {
-      path: '/dev/manga-creator',
-      redirect: { name: 'dev-mangas' },
-    },
+
+    // Legacy redirects for old dev routes to new admin routes
+    { path: '/dev/upload', redirect: { name: 'admin-upload' } },
+    { path: '/dev/mantenedores', redirect: { name: 'admin-mantenedores' } },
+    { path: '/dev/mangas', redirect: { name: 'admin-mangas' } },
+    { path: '/dev/profiles', redirect: { name: 'admin-profiles' } },
+    { path: '/dev/manga-creator', redirect: { name: 'admin-mangas' } },
   ],
 })
 

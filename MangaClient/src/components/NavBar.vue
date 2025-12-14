@@ -85,9 +85,7 @@ function submitSearch(e) {
           </template>
           <template v-else>
             <div class="dev-links">
-              <RouterLink class="btn btn-outline-success" to="/dev/upload">Subir Capítulo</RouterLink>
-              <RouterLink class="btn btn-outline-success" to="/dev/mantenedores">Mantenedores</RouterLink>
-              <RouterLink class="btn btn-outline-success" to="/dev/mangas">Mangas</RouterLink>
+              <RouterLink class="btn btn-outline-success" to="/admin">Panel Admin</RouterLink>
               <button class="btn btn-danger" @click="auth.logout()">Salir</button>
             </div>
           </template>
@@ -124,9 +122,8 @@ function submitSearch(e) {
         </template>
         <template v-else>
           <div class="v-stack gap-2 mt-2">
-            <RouterLink to="/dev/upload" class="btn btn-outline-success w-100" @click="toggleMenu">Subir Capítulo</RouterLink>
-            <RouterLink to="/dev/mantenedores" class="btn btn-outline-success w-100" @click="toggleMenu">Mantenedores</RouterLink>
-            <RouterLink to="/dev/mangas" class="btn btn-outline-success w-100" @click="toggleMenu">Mangas</RouterLink>
+            <RouterLink to="/admin" class="btn btn-outline-success w-100" @click="toggleMenu">Panel Admin</RouterLink>
+
             <button class="btn btn-danger w-100" @click="auth.logout(); toggleMenu()">Salir</button>
           </div>
         </template>

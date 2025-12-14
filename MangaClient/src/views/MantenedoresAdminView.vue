@@ -147,10 +147,12 @@ onMounted(fetchLists)
     <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
     <div v-if="loading" class="loading-container">
       <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
-      <p>Cargando mantenedores...</p>
+      <p>Cargando información...</p>
     </div>
     <div class="row" v-if="!loading">
-      <div class="col-md-6 mb-4">
+      <div class="col-md-6">
+        <!-- Columna Izquierda: Demografías y Autores -->
+        <div class="mb-4">
         <h5>Demografías</h5>
         <ul class="list-group mb-2">
           <li v-for="d in demografias" :key="d.id" class="list-group-item d-flex justify-content-between align-items-center">
@@ -185,7 +187,84 @@ onMounted(fetchLists)
           </div>
         </form>
       </div>
-      <div class="col-md-6 mb-4">
+        <div class="mb-4">
+          <h5>Autores</h5>
+          <ul class="list-group mb-2">
+            <li v-for="a in autores" :key="a.id" class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="flex-grow-1 me-3">
+                <template v-if="!a._editing">
+                  <div class="d-flex flex-column">
+                    <div>
+                      <strong>{{ a.nombre || ('Autor #' + a.id) }}</strong>
+                      <span v-if="a.tipo" class="ms-2 badge bg-info text-dark">{{ a.tipo }}</span>
+                    </div>
+                    <div class="text-muted small">
+                      <span v-if="a.foto_url">Foto: {{ a.foto_url }}</span>
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="d-flex flex-column gap-2">
+                    <input v-model="a.nombre" type="text" class="form-control form-control-sm" placeholder="Nombre" />
+                    <div class="d-flex gap-2">
+                      <input v-model="a.tipo" type="text" class="form-control form-control-sm" placeholder="Tipo de autor" />
+                      <input v-model="a.foto_url" type="text" class="form-control form-control-sm" placeholder="URL de foto" />
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary">ID {{ a.id }}</span>
+                <button v-if="!a._editing" class="btn btn-outline-primary btn-sm" @click="a._editing = true">Editar</button>
+                <button v-else class="btn btn-outline-success btn-sm" @click="saveAutor(a); a._editing = false">Guardar</button>
+              </div>
+            </li>
+          </ul>
+          <form class="row g-2 align-items-end" @submit.prevent="addAutor">
+            <div class="col-12 col-md-5">
+              <input v-model="newAutor" type="text" class="form-control form-control-sm" placeholder="Nombre del autor" />
+            </div>
+            <div class="col-12 col-md-5">
+              <input v-model="newAutorTipo" type="text" class="form-control form-control-sm" placeholder="Tipo de autor" />
+            </div>
+            <div class="col-12 col-md-2">
+              <button class="btn btn-primary btn-sm w-100" :disabled="!newAutor || !newAutorTipo">Agregar</button>
+            </div>
+          </form>
+        </div>
+        <div class="mb-4">
+          <h5>Estados</h5>
+          <ul class="list-group mb-2">
+            <li v-for="s in estados" :key="s.id" class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="flex-grow-1 me-3">
+                <template v-if="!s._editing">
+                  <strong>{{ s.descripcion || ('Estado #' + s.id) }}</strong>
+                </template>
+                <template v-else>
+                  <input v-model="s.descripcion" type="text" class="form-control form-control-sm" placeholder="Descripción" />
+                </template>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary">ID {{ s.id }}</span>
+                <button v-if="!s._editing" class="btn btn-outline-primary btn-sm" @click="s._editing = true">Editar</button>
+                <button v-else class="btn btn-outline-success btn-sm" @click="saveEstado(s); s._editing = false">Guardar</button>
+              </div>
+            </li>
+          </ul>
+          <form class="row g-2 align-items-end" @submit.prevent="addEstado">
+            <div class="col-12 col-md-10">
+              <input v-model="newEstado" type="text" class="form-control form-control-sm" placeholder="Nuevo estado" />
+            </div>
+            <div class="col-12 col-md-2">
+              <button class="btn btn-primary btn-sm w-100" :disabled="!newEstado">Agregar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <!-- Columna Derecha: Tags y Estados -->
+        <div class="mb-4">
         <h5>Tags</h5>
         <ul class="list-group mb-2">
           <li v-for="t in tags" :key="t.id" class="list-group-item d-flex justify-content-between align-items-center">
@@ -213,78 +292,7 @@ onMounted(fetchLists)
           </div>
         </form>
       </div>
-      <div class="col-md-6 mb-4">
-        <h5>Autores</h5>
-        <ul class="list-group mb-2">
-          <li v-for="a in autores" :key="a.id" class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="flex-grow-1 me-3">
-              <template v-if="!a._editing">
-                <div class="d-flex flex-column">
-                  <div>
-                    <strong>{{ a.nombre || ('Autor #' + a.id) }}</strong>
-                    <span v-if="a.tipo" class="ms-2 badge bg-info text-dark">{{ a.tipo }}</span>
-                  </div>
-                  <div class="text-muted small">
-                    <span v-if="a.foto_url">Foto: {{ a.foto_url }}</span>
-                  </div>
-                </div>
-              </template>
-              <template v-else>
-                <div class="d-flex flex-column gap-2">
-                  <input v-model="a.nombre" type="text" class="form-control form-control-sm" placeholder="Nombre" />
-                  <div class="d-flex gap-2">
-                    <input v-model="a.tipo" type="text" class="form-control form-control-sm" placeholder="Tipo de autor" />
-                    <input v-model="a.foto_url" type="text" class="form-control form-control-sm" placeholder="URL de foto" />
-                  </div>
-                </div>
-              </template>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-secondary">ID {{ a.id }}</span>
-              <button v-if="!a._editing" class="btn btn-outline-primary btn-sm" @click="a._editing = true">Editar</button>
-              <button v-else class="btn btn-outline-success btn-sm" @click="saveAutor(a); a._editing = false">Guardar</button>
-            </div>
-          </li>
-        </ul>
-        <form class="row g-2 align-items-end" @submit.prevent="addAutor">
-          <div class="col-12 col-md-5">
-            <input v-model="newAutor" type="text" class="form-control form-control-sm" placeholder="Nombre del autor" />
-          </div>
-          <div class="col-12 col-md-5">
-            <input v-model="newAutorTipo" type="text" class="form-control form-control-sm" placeholder="Tipo de autor" />
-          </div>
-          <div class="col-12 col-md-2">
-            <button class="btn btn-primary btn-sm w-100" :disabled="!newAutor || !newAutorTipo">Agregar</button>
-          </div>
-        </form>
-      </div>
-      <div class="col-md-6 mb-4">
-        <h5>Estados</h5>
-        <ul class="list-group mb-2">
-          <li v-for="s in estados" :key="s.id" class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="flex-grow-1 me-3">
-              <template v-if="!s._editing">
-                <strong>{{ s.descripcion || ('Estado #' + s.id) }}</strong>
-              </template>
-              <template v-else>
-                <input v-model="s.descripcion" type="text" class="form-control form-control-sm" placeholder="Descripción" />
-              </template>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-secondary">ID {{ s.id }}</span>
-              <button v-if="!s._editing" class="btn btn-outline-primary btn-sm" @click="s._editing = true">Editar</button>
-              <button v-else class="btn btn-outline-success btn-sm" @click="saveEstado(s); s._editing = false">Guardar</button>
-            </div>
-          </li>
-        </ul>
-        <form class="row g-2 align-items-end" @submit.prevent="addEstado">
-          <div class="col-12 col-md-10">
-            <input v-model="newEstado" type="text" class="form-control form-control-sm" placeholder="Nuevo estado" />
-          </div>
-          <div class="col-12 col-md-2">
-            <button class="btn btn-primary btn-sm w-100" :disabled="!newEstado">Agregar</button>
-          </div>
-        </form>
+
       </div>
     </div>
   </div>
@@ -296,4 +304,21 @@ onMounted(fetchLists)
 .mantenedores-admin { color: var(--ztmo-text); }
 .mantenedores-admin .text-muted { color: var(--ztmo-text); opacity: 0.75; }
 .mantenedores-admin .form-label { color: var(--ztmo-text); }
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 60px 20px;
+}
+
+.loading-icon {
+  width: 192px;
+  height: 192px;
+  margin-bottom: 20px;
+}
+
+
 </style>
