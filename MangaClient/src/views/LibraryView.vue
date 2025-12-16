@@ -111,32 +111,39 @@
 
       <!-- Results below top filters -->
       <section class="results">
-        <div v-if="loading && !mangas.length" class="loading">Cargando...</div>
-        <div v-else-if="error && !mangas.length" class="error">Error cargando datos</div>
+        <!-- New Loading State -->
+        <div v-if="loading && !mangas.length" class="loading-container">
+          <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
+          <p class="text-muted">Cargando biblioteca...</p>
+        </div>
+        
+        <div v-else-if="error && !mangas.length" class="empty-container">
+           <div class="text-center py-5">
+             <h4 class="mb-2">Ocurrió un error</h4>
+             <p class="text-muted">No pudimos cargar los mangas. Intenta nuevamente.</p>
+           </div>
+        </div>
+
+        <div v-else-if="!mangas.length && !loading" class="empty-container">
+          <div class="text-center py-5">
+             <h3 class="mb-2">Sin resultados</h3>
+             <p class="text-muted">No encontramos nada con esos filtros.</p>
+          </div>
+        </div>
+
         <div v-else class="cards-grid">
           <div v-for="m in mangas" :key="m.id" class="card-item">
             <router-link :to="`/library/manga/${m.id}`" class="card-link">
-              <div class="thumbnail book">
-                <img
-                  class="thumbnail-img"
-                  :src="safeCover(m.cover)"
-                  :alt="m.title"
-                  loading="lazy"
-                  decoding="async"
-                  :fetchpriority="indexFetchPriority(m)"
-                  :srcset="buildSrcset(m.cover)"
-                  :sizes="thumbnailSizes"
-                />
+              <div class="thumbnail book" :style="{ backgroundImage: `url(${safeCover(m.cover)})` }">
                 <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="m.title">{{ m.title }}</h4></div>
-                <div class="type-bubble">{{ originLabel(m) }}<span v-if="isErotic(m)" class="age-18">+18</span></div>
+                <div class="type-bubble">{{ originLabel(m) }}<span v-if="isAuthenticated && isErotic(m)" class="age-18">+18</span></div>
                 <div class="thumbnail-type-bar" :class="typeClass(m)" :style="{ '--type-bar-color': m.dem_color || undefined }">{{ displayType(m) }}</div>
               </div>
             </router-link>
           </div>
-          <div v-if="!mangas.length && !loading" class="empty">Sin resultados</div>
         </div>
 
-        <div class="pagination-row">
+        <div class="pagination-row" v-if="mangas.length">
           <button v-if="!loadAll && showLoadMore" class="btn" @click="loadMore">Cargar más</button>
           <button v-if="!loadAll" class="btn" @click="activateLoadAll">Cargar todas</button>
           <div v-if="loadAll" class="page-info">Cargadas todas ({{ mangas.length }})</div>
@@ -151,16 +158,16 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
-import cache from '@/services/cache'
 import { listMangas } from '@/services/mangaService'
 import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
-import { resolveDemografiaDescripcion } from '@/services/mantenedorService'
+import { useMangaUI } from '@/composables/useMangaUI'
 
 export default {
   name: 'LibraryView',
   setup() {
     const route = useRoute()
     const router = useRouter()
+    const { typeClass, displayType, originLabel, isErotic, safeCover } = useMangaUI()
 
     // Mapa de demografías precargadas para resolución inmediata
     const demografiasMap = new Map()
@@ -239,7 +246,7 @@ export default {
         webcomic: webcomic.value || undefined,
         yonkoma: yonkoma.value || undefined,
         amateur: amateur.value || undefined,
-        amateur: amateur.value || undefined,
+        // STRICT EROTIC FILTER ENFORCEMENT
         erotic: (!isAuthenticated.value) ? 'false' : (erotic.value || undefined),
         genders: includeGenres.value.length ? includeGenres.value.join(',') : undefined,
         exclude_genders: excludeGenres.value.length ? excludeGenres.value.join(',') : undefined,
@@ -253,8 +260,6 @@ export default {
       loading.value = true
       error.value = null
       try {
-        const api = await import('@/services/api')
-        let res
         const data = await listMangas(params.value)
         lastFetchCount.value = Array.isArray(data) ? data.length : 0
         const items = Array.isArray(data) ? await Promise.all(data.map(d => normalizeItemAsync(d))) : []
@@ -262,7 +267,6 @@ export default {
       } catch (e) {
         console.error('Library fetch error', e)
         error.value = e
-        if (!mangas.value.length) mangas.value = demoSeed()
         if (!mangas.value.length) mangas.value = []
       } finally {
         loading.value = false
@@ -285,14 +289,12 @@ export default {
           if (chunk.length < pageSize.value || !chunk.length) break
           currentPage++
         }
-        mangas.value = accumulated.length ? accumulated : demoSeed()
         mangas.value = accumulated
         lastFetchCount.value = accumulated.length
         page.value = currentPage
       } catch (e) {
         console.error('Library fetch all error', e)
         error.value = e
-        if (!mangas.value.length) mangas.value = demoSeed()
         if (!mangas.value.length) mangas.value = []
       } finally {
         loading.value = false
@@ -312,7 +314,7 @@ export default {
     const _libMainCoverResults = new Map()
 
     async function fetchCoverByIdRaw(cid) {
-      try { return await fetchCoverById(cid) } catch (e) { return null }
+      try { return await getCoverByIdCached(cid) } catch (e) { return null }
     }
     function getCoverByIdCached(id) {
       const cid = Number(id)
@@ -324,7 +326,7 @@ export default {
       return p
     }
     async function fetchMainCoverRaw(id) {
-      try { return await getMainCoverForManga(id) } catch (e) { return null }
+      try { return await getMainCoverCached(id) } catch (e) { return null }
     }
     function getMainCoverCached(mangaId) {
       const mid = String(mangaId)
@@ -351,6 +353,7 @@ export default {
       }
       // Fallback remoto: intentar obtener por ID directo, luego por listado
       try {
+        const svc = await import('@/services/mantenedorService')
         const r = await svc.getDemografiaById(idOrName)
         const d = r?.data || r || {}
         const val = { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
@@ -358,6 +361,7 @@ export default {
         return val
       } catch (e) {}
       try {
+        const svc = await import('@/services/mantenedorService')
         const rl = await svc.listDemografias({ page_size: 1000 })
         const list = Array.isArray(rl?.data) ? rl.data : (rl?.data?.results || rl || [])
         const found = list.find(x => String(x.id) === String(idOrName) || String((x.descripcion || x.name || x.title || '')).toLowerCase() === String(idOrName).toLowerCase()) || {}
@@ -373,7 +377,7 @@ export default {
       const title = raw.title || raw.titulo || raw.name || raw.manga_title || `Item ${id}`
       // Preferir portada del serializer cuando esté disponible
       let cover = raw.cover || raw.cover_url || raw.image || raw.portada || raw.cover_image || raw.url_absoluta || raw.url_imagen || ''
-      // Evitar fallback local como '/assets/covers/cover_4.svg': forzar resolución remota
+      // Evitar fallback local antiguo
       if (typeof cover === 'string' && (cover.endsWith('.svg') || cover.startsWith('/assets/covers/'))) {
         cover = ''
       }
@@ -385,7 +389,6 @@ export default {
           if (viaManga) cover = viaManga
         }
       }
-      if (!cover) cover = resolveCover(raw)
       // Preferir demografia_display (del serializer) cuando esté disponible
       let dem = raw.demografia_display || raw.demography || raw.demografia || raw.demo || ''
       if (Array.isArray(dem)) dem = dem.join(' ')
@@ -412,15 +415,8 @@ export default {
         type: raw.type || raw.book_type || 'manga',
         demography: dem,
         dem_color,
-        erotic: (raw.erotico === true) || (raw.erotic === true) || raw.tags?.includes('erotic')
+        tags: raw.tags || []
       }
-    }
-    function safeCover(url){
-      const u = String(url || '').toLowerCase()
-      const blank = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="240"/>'
-      if (!u || !u.startsWith('http')) return blank
-      if (u.includes('miswebtoons.uk/assets/covers')) return blank
-      return url
     }
 
     // Build a generic srcset; if no variants exist, duplicate src as fallback
@@ -495,7 +491,7 @@ export default {
         if (!demografiasLoaded) {
           const svc = await import('@/services/mantenedorService')
           const list = await svc.listDemografias({ page_size: 1000 })
-          if (Array.isArray(list)) {
+           if (Array.isArray(list)) {
             for (const d of list) {
               const desc = d.descripcion || d.name || d.title || ''
               const color = d.color || d.dem_color || ''
@@ -506,7 +502,6 @@ export default {
         }
       } catch {}
       // Seed demo items inmediatamente para vista y luego cargar datos reales
-      mangas.value = demoSeed()
       await fetchData()
     })
 
@@ -519,62 +514,6 @@ export default {
       }
     })
 
-    function typeClass(m) {
-      let raw = (m && (m.demography || m.type || ''))
-      if (Array.isArray(raw)) raw = raw.join(' ')
-      if (raw && typeof raw === 'object') raw = raw.name || raw.title || JSON.stringify(raw)
-      raw = String(raw || '').toLowerCase()
-      if (raw.includes('manhwa')) return 'type-manhwa'
-      if (raw.includes('manhua')) return 'type-manhua'
-      if (raw.includes('novel') || raw.includes('novela')) return 'type-novela'
-      if (raw.includes('shoujo')) return 'type-shoujo'
-      if (raw.includes('josei')) return 'type-josei'
-      if (raw.includes('seinen')) return 'type-seinen'
-      if (raw.includes('shounen') || raw.includes('shonen')) return 'type-shounen'
-      if (raw.includes('manga')) return 'type-manga'
-      return 'type-default'
-    }
-
-    function displayType(m) {
-      let val = m && (m.demography || m.demografia || m.type || 'MANGA')
-      // parse JSON encoded strings
-      if (typeof val === 'string') {
-        const s = val.trim()
-        if (s.startsWith('{') || s.startsWith('[')) {
-          try { val = JSON.parse(s) } catch (e) { /* keep original */ }
-        }
-      }
-      if (Array.isArray(val)) val = val.join(' ')
-      if (val && typeof val === 'object') val = val.descripcion || val.description || val.name || val.title || JSON.stringify(val)
-      return String(val || 'MANGA').toUpperCase()
-    }
-
-    function originLabel(m) {
-      let t = m && (m.mng_tipo_manga || m.mng_tipo_serie || m.tipo_serie || m.manga_tipo_serie || m.type || m.book_type || '')
-      if (!t && m && m.tags && Array.isArray(m.tags)) {
-        const joined = m.tags.map(x => (x.nombre || x.name || x)).join(' ').toLowerCase()
-        if (joined.includes('manhwa')) t = 'manhwa'
-        if (joined.includes('manhua')) t = 'manhua'
-      }
-      if (typeof t === 'string') t = t.toLowerCase()
-      if (t && t.includes('manhwa')) return 'Manhwa'
-      if (t && t.includes('manhua')) return 'Manhua'
-      if (t && t.includes('novel')) return 'Novela'
-      return 'Manga'
-    }
-
-    function isErotic(m) {
-      if (!m) return false
-      if (m.erotic === true) return true
-      if (m.tags && Array.isArray(m.tags)) {
-        const joined = m.tags.map(t => (t.nombre || t.name || t)).join(' ').toLowerCase()
-        if (joined.includes('ecchi') || joined.includes('erotic') || joined.includes('erótico') || joined.includes('erotico')) return true
-      }
-      const dem = String(m.demography || m.demografia || m.type || '').toLowerCase()
-      if (dem.includes('erotic') || dem.includes('erótico') || dem.includes('erotico') || dem.includes('ecchi')) return true
-      return false
-    }
-
     return {
       mangas, loading, error,
       search, orderItem, orderDir,
@@ -584,8 +523,8 @@ export default {
       includeGenres, excludeGenres, genres, genreLimit,
       openSection, toggleSection, enforceGenreLimit,
       showStatus, reload, applySearch,
-      // template helpers
-      typeClass, displayType, originLabel, isErotic,
+      // template helpers from composable
+      typeClass, displayType, originLabel, isErotic, safeCover,
       // pagination
       page, pageSize, loadMore, showLoadMore, loadAll, activateLoadAll
     }

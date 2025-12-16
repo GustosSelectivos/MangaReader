@@ -28,6 +28,12 @@ import { RouterLink } from 'vue-router'
         <h3>Perfiles</h3>
         <p>Ver y administrar perfiles de usuario.</p>
       </RouterLink>
+
+      <RouterLink to="/admin/worker" class="dashboard-card">
+        <div class="card-icon">🤖</div>
+        <h3>Worker</h3>
+        <p>Gestionar scraper, descargas y staging.</p>
+      </RouterLink>
     </div>
   </div>
 </template>

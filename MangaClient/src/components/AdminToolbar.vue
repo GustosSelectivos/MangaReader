@@ -28,6 +28,7 @@ const pageTitle = computed(() => {
           <RouterLink to="/admin/upload" class="btn btn-sm btn-ghost" active-class="active">Subir</RouterLink>
           <RouterLink to="/admin/mantenedores" class="btn btn-sm btn-ghost" active-class="active">Mantenedores</RouterLink>
           <RouterLink to="/admin/profiles" class="btn btn-sm btn-ghost" active-class="active">Perfiles</RouterLink>
+          <RouterLink to="/admin/worker" class="btn btn-sm btn-ghost" active-class="active">Worker</RouterLink>
         </nav>
       </div>
       

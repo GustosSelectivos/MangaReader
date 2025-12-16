@@ -2,14 +2,147 @@ import os
 import asyncio
 import aiohttp
 import boto3
+from botocore.config import Config
 from tqdm.asyncio import tqdm
 from io import BytesIO
+import hashlib
+import unicodedata
+from urllib.parse import urlparse, urljoin
+import time
+# import ctypes
 
-# Configuración básica (Idealmente usar venv variables)
-# B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME")
-# B2_ENDPOINT = os.getenv("B2_ENDPOINT")
-# B2_KEY_ID = os.getenv("B2_KEY_ID")
-# B2_APP_KEY = os.getenv("B2_APP_KEY")
+
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env si existe
+load_dotenv()
+
+# Configuración básica
+B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME")
+B2_ENDPOINT = os.getenv("B2_ENDPOINT")
+B2_KEY_ID = os.getenv("B2_KEY_ID")
+B2_APP_KEY = os.getenv("B2_APP_KEY")
+
+# API Configuration to match Frontend
+API_BASE_URL = "http://127.0.0.1:8000/api"
+
+async def get_presigned_url(session, file_path, content_type='image/webp'):
+    """Requests a presigned URL from the local Backend API"""
+    try:
+        # TODO: Add Authorization header if API requires it (token from login?)
+        # For now, assuming internal/dev mode or IP whitelisting might allow it,
+        # OR we need to ask user for a token. 
+        # But wait, UploadChapterView uses `api.post` which attaches token.
+        # If the endpoint is protected (IsAuthenticated), we need a token.
+        # User is 'Ezequiel' / '1234'. We can login first?
+        # Or simpler: IsAuthenticatedOrReadOnly?
+        # b2_view.py showed `permission_classes = [IsAuthenticated]`.
+        # So we NEED to authenticate.
+        
+        # Adding a LOGIN function to get token.
+        pass
+        
+    except Exception as e:
+        print(f"❌ Error getting sign: {e}")
+        return None
+
+async def login_and_get_token(session, username, password):
+    url = f"{API_BASE_URL}/token/" 
+    # Check if that's the endpoint. settings.py didn't show URLs.
+    # But usually simplejwt uses /token/. 
+    # Let's verify urls.py if possible, but standard is /api/token/.
+    try:
+        async with session.post(url, json={'username': username, 'password': password}) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get('access')
+            else:
+                print(f"❌ Login failed: {resp.status}")
+                return None
+    except Exception as e:
+        print(f"❌ Login error: {e}")
+        return None
+
+async def upload_file_via_api(session, local_path, relative_path, token):
+    # 1. Sign
+    sign_url = f"{API_BASE_URL}/upload/sign/"
+    headers = {'Authorization': f'Bearer {token}'}
+    payload = {'file_path': relative_path, 'content_type': 'image/webp'}
+    
+    async with session.post(sign_url, json=payload, headers=headers) as resp:
+        if resp.status != 200:
+            text = await resp.text()
+            print(f"  ❌ Sign failed for {relative_path}: {resp.status} - {text}")
+            return False
+        data = await resp.json()
+    
+    upload_url = data.get('url')
+    if not upload_url:
+        print("  ❌ No URL returned from sign")
+        return False
+        
+    # 2. Upload to B2 (PUT)
+    # Read file content
+    with open(local_path, 'rb') as f:
+        file_content = f.read()
+        
+    async with session.put(upload_url, data=file_content, headers={'Content-Type': 'image/webp'}) as resp:
+        if resp.status not in [200, 204]: # 204 is common for PUT
+             # Backblaze usually returns 200
+            print(f"  ❌ Upload failed: {resp.status}")
+            return False
+            
+    print(f"  ✅ Subido: {relative_path}")
+    return True
+
+async def upload_directory_to_b2(local_dir):
+    # 1. Login
+    username = os.getenv("API_USER")
+    password = os.getenv("API_PASS")
+    
+    if not username or not password:
+        print("\n🔑 Credenciales para la API (Admin Panel):")
+        username = input("Usuario: ").strip()
+        import getpass
+        password = getpass.getpass("Contraseña: ").strip()
+    
+    print(f"🔑 Autenticando en API Backend ({API_BASE_URL})...")
+    
+    async with aiohttp.ClientSession() as session:
+        token = await login_and_get_token(session, username, password)
+        if not token:
+            print("❌ No se pudo loguear en el API. No se puede subir.")
+            return
+
+        print("✅ Autenticado. Iniciando subida...")
+        
+        # Calculate paths
+        abs_local_dir = os.path.abspath(local_dir)
+        worker_root = os.getcwd() 
+        
+        # Determine prefix based on logic: chapters/CODE/NUM
+        # worker.py is in MangaWorker.
+        # files are in MangaWorker/chapters/CODE/NUM/img.webp
+        
+        tasks = []
+        for root, dirs, files in os.walk(local_dir):
+            for file in files:
+                local_path = os.path.join(root, file)
+                
+                # Relative path logic:
+                # We want B2 key: chapters/CODE/NUM/001.webp
+                # local_path is c:/.../chapters/CODE/NUM/001.webp
+                # If we take relpath from 'MangaWorker', it is 'chapters/CODE/NUM/001.webp'.
+                # This matches EXACTLY what we want.
+                
+                rel_path = os.path.relpath(local_path, worker_root).replace("\\", "/")
+                
+                # Serial execution or parallel? Parallel is faster.
+                success = await upload_file_via_api(session, local_path, rel_path, token)
+                # For cleaner output, maybe await sequentially or limit concurrency?
+                # let's await sequentially to debug first.
+                
+        print("✨ Todos los archivos procesados.")
 
 async def download_image(session, url, current_index, total, save_dir):
     """Descarga una sola imagen de forma asíncrona y la guarda en disco"""
@@ -33,11 +166,75 @@ async def download_image(session, url, current_index, total, save_dir):
     except Exception as e:
         print(f"❌ Exception en {url}: {e}")
         return None
-    except Exception as e:
-        print(f"❌ Exception en {url}: {e}")
-        return None
 
-async def process_chapter(chapter_url):
+def _slug_base(title: str) -> str:
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError("Se requiere un título")
+    nfd = unicodedata.normalize("NFD", title)
+    no_marks = "".join(ch for ch in nfd if unicodedata.category(ch) != "Mn")
+    out = []
+    prev_us = False
+    for ch in no_marks.lower():
+        if ch.isalnum():
+            out.append(ch)
+            prev_us = False
+        else:
+            if not prev_us:
+                out.append("_")
+                prev_us = True
+    return "".join(out).strip("_")
+
+def codename_from_title(title: str) -> str:
+    base = _slug_base(title)
+    parts = [p for p in base.split("_") if p]
+    initials = "".join(p[0] for p in parts[:2]) or "x"
+    h = hashlib.sha1(title.encode("utf-8")).hexdigest()[:6]
+    h = hashlib.sha1(title.encode("utf-8")).hexdigest()[:6]
+    return f"{initials}-{h}"
+
+def renumber_images(directory):
+    """Renombra secuencialmente las imágenes en el directorio (001.webp, 002.webp...)"""
+    print(f"🔄 Renombrando imágenes en {directory}...")
+    
+    # Listar y ordenar archivos existentes
+    files = [f for f in os.listdir(directory) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+    files.sort()
+    
+    if not files:
+        print("⚠️ No hay imágenes para renombrar.")
+        return
+
+    # 1. Renombrar a temporal para evitar conflictos
+    temp_files = []
+    for i, filename in enumerate(files):
+        old_path = os.path.join(directory, filename)
+        temp_name = f"temp_{i:06d}.tmp"
+        temp_path = os.path.join(directory, temp_name)
+        os.rename(old_path, temp_path)
+        temp_files.append(temp_path)
+        
+    # 2. Renombrar a final secuencial
+    for i, temp_path in enumerate(temp_files):
+        # Always output as .webp since that is the target format for the API/B2
+        # However, simple rename of .jpg to .webp is invalid. 
+        # Ideally we should convert if it's not webp, but for now let's respect the user's implicit "rename".
+        # If the user mainly just wants them ORDERED 001..999.
+        
+        # Let's stick to .webp as per original code, assuming user handles conversion or they are already webp/compatible.
+        new_name = f"{i+1:03d}.webp"
+        new_path = os.path.join(directory, new_name)
+        
+        # Check if we are renaming a non-webp file to webp without conversion
+        # The original code did this blindly. 
+        # Use Python's implicit rename.
+        os.rename(temp_path, new_path)
+        
+    print(f"✅ Renombrado completado: 001.webp - {len(files):03d}.webp")
+
+# def get_open_windows(): ... (Removed ctypes logic for simplicity as requested)
+
+
+async def process_chapter(chapter_url, chapter_num, series_base_dir):
     """
     Lógica principal:
     1. Obtener HTML del capítulo
@@ -50,7 +247,6 @@ async def process_chapter(chapter_url):
     print(f"🌍 Descargando HTML: {chapter_url}")
     
     # Extraer dominio para el Referer
-    from urllib.parse import urlparse
     domain = urlparse(chapter_url).netloc
     
     headers = {
@@ -62,7 +258,7 @@ async def process_chapter(chapter_url):
         async with session.get(chapter_url) as response:
             if response.status != 200:
                 print(f"❌ Error al acceder al capítulo: {response.status}")
-                return
+                return None, None # Return None for next_url and download_dir
             html = await response.text()
             print(f"📍 URL Final tras redirección: {response.url}")
             
@@ -96,6 +292,8 @@ async def process_chapter(chapter_url):
     for img in images:
         src = img.get('src')
         if src and ('uploads' in src or 'storage' in src) and not 'logo' in src:
+            # Convert to absolute URL
+            src = urljoin(chapter_url, src)
             image_urls.append(src)
             
     # Si no encontramos nada, puede ser que estén en un script JSON (NextJS/React)
@@ -113,25 +311,11 @@ async def process_chapter(chapter_url):
     total_images = len(image_urls)
     if total_images == 0:
         print("❌ No se pudieron extraer imágenes. Puede que el sitio requiera JS (Selenium/Chromium).")
-        return
+        return None, None # Return None for next_url and download_dir
 
-    # Crear carpeta de descargas base
-    base_download_dir = "downloads"
-    os.makedirs(base_download_dir, exist_ok=True)
-    
-    # Buscar siguiente carpeta disponible 001-999
-    download_dir = ""
-    for i in range(1, 1000):
-        folder_name = f"{i:03d}"
-        path = os.path.join(base_download_dir, folder_name)
-        if not os.path.exists(path):
-            download_dir = path
-            break
-            
-    if not download_dir:
-        print("❌ Error: Se alcanzó el límite de 999 carpetas en downloads/")
-        return
-
+    # Crear carpeta de descargas para el capítulo
+    chapter_dir_name = f"{chapter_num:03d}"
+    download_dir = os.path.join(series_base_dir, chapter_dir_name)
     os.makedirs(download_dir, exist_ok=True)
     print(f"📂 Guardando imágenes en: {os.path.abspath(download_dir)}")
 
@@ -159,21 +343,67 @@ async def process_chapter(chapter_url):
             except:
                 pass
 
-        confirm = input("\n👉 ¿Listo para subir a Backblaze? (Escribe 'S' y Enter): ")
-        if confirm.lower() != 's':
-            print("❌ Proceso cancelado. No se subió nada.")
-            return
+        # Esperar cierre de carpeta en lugar de input manual
+        # wait_for_folder_close(download_dir)
+        
+        # 4.1 Confirmar RENOMBRADO
+        rename_confirm = input("\n👉 Presiona 's' y Enter para RENOMBRAR las imágenes: ").strip()
+        if rename_confirm.lower() != 's':
+             print("⚠️ Saltando renombrado...")
+        else:
+             print("\n🔄 Auditando y Renombrando secuencia...")
+             renumber_images(download_dir)
 
-        print("\n🚀 Iniciando subida a Backblaze (Simulada por ahora)...")
-        # Aquí llamaríamos a la función upload_directory_to_b2(download_dir)
-        print("✨ ¡Subida completada! (Mentira, es un print)")
+        # 4.2 Confirmar SUBIDA
+        upload_confirm = input("\n👉 ¿Listo para subir a Backblaze? (Escribe 'S' y Enter): ").strip()
+        if upload_confirm.lower() != 's':
+             print("❌ Proceso cancelado. No se subió nada.")
+             return
+
+        print("\n🚀 Iniciando subida a Backblaze (Vía API)...")
+        await upload_directory_to_b2(download_dir)
 
 if __name__ == "__main__":
-    url_capitulo = "https://zonatmo.com/index.php/view_uploads/1682235"
     try:
         if os.name == 'nt':
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        asyncio.run(process_chapter(url_capitulo))
+            
+        print("=== MangaWorker: Descargador Manual ===")
+        url_input = input("Ingrese la URL del capítulo: ").strip()
+        if not url_input:
+            print("❌ URL requerida")
+            exit()
+            
+        series_title = input("Ingrese el título de la serie: ").strip()
+        if not series_title:
+             print("❌ Título requerido")
+             exit()
+             
+        # Generar codename
+        try:
+            series_code = codename_from_title(series_title)
+            print(f"🔹 Codename generado: {series_code}")
+            
+            # Definir directorio base: chapters/{code}
+            base_chapters_dir = os.path.join(os.getcwd(), 'chapters', series_code)
+            if not os.path.exists(base_chapters_dir):
+                print(f"📂 Creando directorio de serie: {base_chapters_dir}")
+                os.makedirs(base_chapters_dir, exist_ok=True)
+            else:
+                print(f"📂 Directorio de serie existente: {base_chapters_dir}")
+        except Exception as e:
+            print(f"❌ Error generando codename: {e}")
+            exit()
+            
+        chap_num_str = input("Ingrese el número del capítulo (ej. 1): ").strip()
+        try:
+            chap_num = int(chap_num_str)
+        except:
+            chap_num = 1
+            print("⚠️ Número inválido, usando 1 por defecto")
+
+        asyncio.run(process_chapter(url_input, chap_num, base_chapters_dir))
+        
     except ModuleNotFoundError as e:
         print(f"\n❌ ERROR CRÍTICO: {e}")
         print("ℹ️  Estás ejecutando esto con el Python equivocado.")

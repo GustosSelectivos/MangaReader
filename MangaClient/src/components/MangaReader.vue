@@ -146,7 +146,8 @@ export default {
     pages: { type: Array, required: true },
     initialPage: { type: Number, default: 1 },
     title: { type: String, default: '' },
-    chapter: { type: Object, default: null }
+    chapter: { type: Object, default: null },
+    direction: { type: String, default: 'rtl' } // 'rtl' (manga) or 'ltr' (comic)
   },
   setup(props, { emit }) {
     const currentPage = ref(props.initialPage)
@@ -168,6 +169,7 @@ export default {
     watch(() => props.pages, () => { preloadUpcoming(); ensureOrientations() }, { deep: true })
 
     onMounted(() => {
+      // ... existing onMounted code ...
       try {
         const saved = localStorage.getItem('viewer-mode')
         if (saved === 'cascade' || saved === 'paginated' || saved === 'libreta') viewMode.value = saved
@@ -241,6 +243,7 @@ export default {
     })
 
     onBeforeUnmount(() => {
+      // ... existing onBeforeUnmount code ...
       const fn = window.__onViewerMode
       if (fn) window.removeEventListener('viewer-mode', fn)
       try {
@@ -436,9 +439,9 @@ export default {
       const arr = props.pages || []
       const out = []
       let i = 0
-      // rightIsOdd: when true -> odd goes to right, even to left (default)
-      // when false -> even goes to right, odd to left (flipped)
-      let rightIsOdd = true
+      // rightIsOdd: when true -> odd goes to right, even to left (default for RTL/Manga)
+      // when false -> even goes to right, odd to left (flipped for LTR/Comic)
+      let rightIsOdd = (props.direction !== 'ltr')
       while (i < arr.length) {
         const aUrl = arr[i]
         const aOri = orientationMap.value[aUrl]
