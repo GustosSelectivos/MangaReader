@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 import os
 import shutil
@@ -8,6 +9,24 @@ import re
 from urllib.parse import urlparse
 
 app = FastAPI()
+
+# Configuración de Seguridad
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_api_key(api_key_header: str = Security(api_key_header)):
+    """Verifica que la petición tenga la API Key correcta"""
+    expected_key = os.getenv("WORKER_API_KEY")
+    
+    # Si no hay variable configurada en el servidor, advertimos pero permitimos (o bloqueamos)
+    # Para producción, bloqueamos por seguridad.
+    if not expected_key:
+        print("⚠️  ALERTA DE SEGURIDAD: WORKER_API_KEY no configurada en entorno.")
+        raise HTTPException(status_code=500, detail="Server misconfiguration: Missing API Key")
+        
+    if api_key_header != expected_key:
+        raise HTTPException(status_code=403, detail="Acceso Denegado: API Key inválida")
+    return api_key_header
 
 class ChapterRequest(BaseModel):
     url: str
@@ -98,7 +117,7 @@ async def process_chapter_task(chapter_url: str):
 
 
 @app.post("/download")
-async def start_download(req: ChapterRequest, background_tasks: BackgroundTasks):
+async def start_download(req: ChapterRequest, background_tasks: BackgroundTasks, api_key: str = Depends(get_api_key)):
     """Endpoint que recibe la URL y lanza el trabajo en background"""
     background_tasks.add_task(process_chapter_task, req.url)
     return {"status": "started", "message": f"Procesando {req.url} en segundo plano"}

@@ -168,6 +168,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
+    'EXCEPTION_HANDLER': 'ApiCore.exceptions.custom_exception_handler',
 }
 
 # Simple JWT settings (use env vars in production)
