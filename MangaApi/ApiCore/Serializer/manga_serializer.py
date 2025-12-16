@@ -51,7 +51,7 @@ class MangaTagSerializer(serializers.ModelSerializer):
 
 
 class MangaSerializer(serializers.ModelSerializer):
-	estado_display = serializers.CharField(source='estado.nombre', read_only=True)
+	estado_display = serializers.CharField(source='estado.descripcion', read_only=True)
 	demografia_display = serializers.CharField(source='demografia.descripcion', read_only=True)
 	dem_color = serializers.CharField(source='demografia.color', read_only=True)
 	cover_url = serializers.SerializerMethodField()
