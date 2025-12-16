@@ -4,7 +4,7 @@
       <div class="container header-inner">
         <div class="row align-items-start">
           <div class="col-12 col-md-4 text-center">
-            <h4 class="book-type">MANGA</h4>
+            <h4 class="book-type">{{ bookType }}</h4>
             <div class="element-image my-2">
               <img class="book-thumbnail" :src="cover" alt="Portada del manga" loading="lazy" decoding="async" fetchpriority="high" />
             </div>
@@ -130,6 +130,7 @@ export default {
     const genres = ref([])
     const mainDemography = ref('')
     const statusDisplay = ref(null)
+    const bookType = ref('MANGA')
     const altTitles = ref([])
     const synonyms = ref([])
 
@@ -240,6 +241,9 @@ export default {
           const estado = mData.estado_display || mData.estado || mData.status || ''
           const estadoStr = typeof estado === 'object' ? (estado.descripcion || estado.name || estado.title) : String(estado || '')
           if (estadoStr) statusDisplay.value = { label: estadoStr, on: /public|ongoing|publicándose|en emisión/i.test(estadoStr) }
+          // Series Type
+          const tipo = mData.tipo_serie || mData.type || 'manga'
+          bookType.value = String(tipo).toUpperCase()
           // Alternative titles / synonyms
           const alt = mData.titulos_alternativos || mData.alternative_titles || []
           altTitles.value = Array.isArray(alt) ? alt.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
@@ -351,7 +355,7 @@ export default {
       chapters, selectedChapter, selectedIndex, loading, error,
       selectChapter, openChapter, prevChapter, nextChapter, visibleChapters,
       showAllChapters, orderAsc, toggleOrder,
-      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms
+      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms, bookType
     }
   }
 }
