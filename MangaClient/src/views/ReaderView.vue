@@ -233,7 +233,7 @@ export default {
           year.value = String(mData.anio || mData.year || year.value)
           // Map genres/demography
           const g = mData.generos || mData.genres || mData.tags || []
-          genres.value = Array.isArray(g) ? g.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
+          genres.value = Array.isArray(g) ? g.map(x => (x.tag_descripcion || x.nombre || x.name || x.title || x)).filter(Boolean) : []
           const dem = mData.demografia_display || mData.demografia || mData.demography || ''
           mainDemography.value = typeof dem === 'object' ? (dem.descripcion || dem.name || dem.title) : String(dem || '')
           // Status mapping
