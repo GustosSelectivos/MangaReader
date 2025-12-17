@@ -24,7 +24,8 @@ B2_KEY_ID = os.getenv("B2_KEY_ID")
 B2_APP_KEY = os.getenv("B2_APP_KEY")
 
 # API Configuration to match Frontend
-API_BASE_URL = "http://127.0.0.1:8000/api"
+# API Configuration
+API_BASE_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000/api")
 
 async def get_presigned_url(session, file_path, content_type='image/webp'):
     """Requests a presigned URL from the local Backend API"""
@@ -95,24 +96,23 @@ async def upload_file_via_api(session, local_path, relative_path, token):
     print(f"  ✅ Subido: {relative_path}")
     return True
 
-async def upload_directory_to_b2(local_dir):
-    # 1. Login
-    username = os.getenv("API_USER")
-    password = os.getenv("API_PASS")
+async def upload_directory_to_b2(local_dir, username=None, password=None, token=None):
+    # 1. Login (if token not provided)
+    if not token:
+        username = username or os.getenv("API_USER")
+        password = password or os.getenv("API_PASS")
+        
+        if not username or not password:
+            print("❌ Error: Credenciales API no proporcionadas (API_USER/API_PASS en .env o argumentos)")
+            return False
     
-    if not username or not password:
-        print("\n🔑 Credenciales para la API (Admin Panel):")
-        username = input("Usuario: ").strip()
-        import getpass
-        password = getpass.getpass("Contraseña: ").strip()
-    
-    print(f"🔑 Autenticando en API Backend ({API_BASE_URL})...")
-    
-    async with aiohttp.ClientSession() as session:
-        token = await login_and_get_token(session, username, password)
-        if not token:
-            print("❌ No se pudo loguear en el API. No se puede subir.")
-            return
+        print(f"🔑 Autenticando en API Backend ({API_BASE_URL})...")
+        async with aiohttp.ClientSession() as session:
+            token = await login_and_get_token(session, username, password)
+            
+    if not token:
+        print("❌ No se pudo loguear en el API. No se puede subir.")
+        return False
 
         print("✅ Autenticado. Iniciando subida...")
         
@@ -240,6 +240,7 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
     1. Obtener HTML del capítulo
     2. Extraer URLs de imágenes (Aquí pondrás tu lógica de scraping liviana)
     3. Descargar en paralelo
+    Returns: (download_dir, valid_images_count) or (None, 0)
     """
     print(f"🚀 Iniciando proceso para: {chapter_url}")
     
@@ -258,7 +259,7 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
         async with session.get(chapter_url) as response:
             if response.status != 200:
                 print(f"❌ Error al acceder al capítulo: {response.status}")
-                return None, None # Return None for next_url and download_dir
+                return None, 0
             html = await response.text()
             print(f"📍 URL Final tras redirección: {response.url}")
             
@@ -311,7 +312,7 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
     total_images = len(image_urls)
     if total_images == 0:
         print("❌ No se pudieron extraer imágenes. Puede que el sitio requiera JS (Selenium/Chromium).")
-        return None, None # Return None for next_url and download_dir
+        return None, 0
 
     # Crear carpeta de descargas para el capítulo
     chapter_dir_name = f"{chapter_num:03d}"
@@ -329,6 +330,9 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
         await asyncio.gather(*tasks)
         print(f"✨ ¡Descarga completa! Revisa la carpeta '{download_dir}'")
         
+        return download_dir, total_images
+
+async def manual_audit_and_upload(download_dir):
         # 4. AUDITORÍA MANUAL
         print("\n" + "="*50)
         print("👀  MODO AUDITORÍA  👀")
@@ -361,6 +365,7 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
              return
 
         print("\n🚀 Iniciando subida a Backblaze (Vía API)...")
+        # Reuse existing upload function, this time asking inputs if needed or using env
         await upload_directory_to_b2(download_dir)
 
 if __name__ == "__main__":
@@ -402,7 +407,10 @@ if __name__ == "__main__":
             chap_num = 1
             print("⚠️ Número inválido, usando 1 por defecto")
 
-        asyncio.run(process_chapter(url_input, chap_num, base_chapters_dir))
+        download_dir, count = asyncio.run(process_chapter(url_input, chap_num, base_chapters_dir))
+        
+        if download_dir and count > 0:
+             asyncio.run(manual_audit_and_upload(download_dir))
         
     except ModuleNotFoundError as e:
         print(f"\n❌ ERROR CRÍTICO: {e}")
