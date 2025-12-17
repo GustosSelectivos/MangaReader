@@ -18,53 +18,56 @@
           <div class="card-body">
             <h5 class="card-title text-muted mb-3">Estado del Servicio</h5>
             <div class="d-flex align-items-center gap-3">
-              <div class="status-indicator online"></div>
+              <div class="status-indicator" :class="status === 'idle' || status === 'processing' ? 'online' : 'offline'"></div>
               <div>
-                <h3 class="m-0">En Línea</h3>
-                <small class="text-muted">v1.2.0 • Uptime: 4d 12h</small>
+                <h3 class="m-0 text-capitalize">{{ status === 'processing' ? 'Procesando' : (status === 'idle' ? 'En Espera' : 'Offline') }}</h3>
+                <small class="text-muted" v-if="currentTask">Activo: {{ currentTask }}</small>
+                <small class="text-muted" v-else>Esperando tareas...</small>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Queue Card -->
+      <!-- Stats Card -->
       <div class="col-12 col-md-4">
         <div class="card h-100 border-0 shadow-sm">
           <div class="card-body">
-            <h5 class="card-title text-muted mb-3">Cola de Descargas</h5>
+            <h5 class="card-title text-muted mb-3">Completados vs Fallidos</h5>
             <div class="d-flex align-items-center justify-content-between">
               <div>
-                <h3 class="m-0">0</h3>
-                <small class="text-muted">Tareas pendientes</small>
+                <h3 class="m-0 text-success">{{ completedCount }}</h3>
+                <small class="text-muted">Éxitos</small>
+              </div>
+              <div style="width:1px; height:40px; background:#eee;"></div>
+              <div>
+                <h3 class="m-0 text-danger">{{ failedCount }}</h3>
+                <small class="text-muted">Fallos</small>
               </div>
               <div class="icon-bg bg-light rounded-circle p-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="var(--bs-primary)" viewBox="0 0 16 16">
-                  <path d="M8.235 1.559a.5.5 0 0 0-.47 0l-7.5 4a.5.5 0 0 0 0 .882L3.188 8 .264 9.559a.5.5 0 0 0 0 .882l7.5 4a.5.5 0 0 0 .47 0l7.5-4a.5.5 0 0 0 0-.882L12.813 8l2.922-1.559a.5.5 0 0 0 0-.882l-7.5-4zm3.515 7.008L14.438 10 8 13.433 1.562 10 4.25 8.567l3.515 1.874a.5.5 0 0 0 .47 0l3.515-1.874zM8 9.433 1.562 6 8 2.567 14.438 6 8 9.433z"/>
-                </svg>
+                 <!-- Icon code preserved -->
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="var(--bs-primary)" viewBox="0 0 16 16">
+                   <path d="M8.235 1.559a.5.5 0 0 0-.47 0l-7.5 4a.5.5 0 0 0 0 .882L3.188 8 .264 9.559a.5.5 0 0 0 0 .882l7.5 4a.5.5 0 0 0 .47 0l7.5-4a.5.5 0 0 0 0-.882L12.813 8l2.922-1.559a.5.5 0 0 0 0-.882l-7.5-4zm3.515 7.008L14.438 10 8 13.433 1.562 10 4.25 8.567l3.515 1.874a.5.5 0 0 0 .47 0l3.515-1.874zM8 9.433 1.562 6 8 2.567 14.438 6 8 9.433z"/>
+                 </svg>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Storage Card -->
+      <!-- Info/Active Task Card -->
       <div class="col-12 col-md-4">
         <div class="card h-100 border-0 shadow-sm">
           <div class="card-body">
-            <h5 class="card-title text-muted mb-3">Staging (B2)</h5>
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <h3 class="m-0">12</h3>
-                <small class="text-muted">Capítulos por aprobar</small>
-              </div>
-              <div class="icon-bg bg-light rounded-circle p-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="var(--bs-success)" viewBox="0 0 16 16">
-                   <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
-                   <path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383zm.653.757c-.757.653-1.153 1.44-1.153 2.056v.448l-.445.049C2.064 6.805 1 7.952 1 9.318 1 10.785 2.23 12 3.781 12h8.906C13.98 12 15 10.988 15 9.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 4.825 10.328 3 8 3a4.53 4.53 0 0 0-2.941 1.1z"/>
-                </svg>
-              </div>
-            </div>
+            <h5 class="card-title text-muted mb-3">Tarea Actual</h5>
+             <div v-if="currentTask">
+                <div class="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
+                <div><strong>{{ currentTask }}</strong></div>
+                <small class="text-muted">Descargando y Subiendo...</small>
+             </div>
+             <div v-else class="text-muted d-flex align-items-center h-100" style="min-height: 60px;">
+                <em>Ninguna tarea en curso</em>
+             </div>
           </div>
         </div>
       </div>
@@ -83,7 +86,42 @@
 </template>
 
 <script setup>
-// Placeholder logic
+import { ref, onMounted, onUnmounted } from 'vue'
+import api from '@/services/api'
+
+const STATUS_ENDPOINT = 'chapters/worker_status/'
+
+const status = ref('offline')
+const currentTask = ref(null)
+const completedCount = ref(0)
+const failedCount = ref(0)
+const loading = ref(false)
+let pollInterval = null
+
+async function refreshStatus() {
+  loading.value = true
+  try {
+    const { data } = await api.get(STATUS_ENDPOINT)
+    status.value = data.status || 'offline'
+    currentTask.value = data.current_task || null
+    completedCount.value = data.completed_tasks || 0
+    failedCount.value = data.failed_tasks || 0
+  } catch (e) {
+    status.value = 'offline'
+    currentTask.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  refreshStatus()
+  pollInterval = setInterval(refreshStatus, 5000) // Poll every 5 seconds
+})
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 </script>
 
 <style scoped>

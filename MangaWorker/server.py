@@ -26,6 +26,15 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
         raise HTTPException(status_code=403, detail="Acceso Denegado: API Key inválida")
     return api_key_header
 
+# State Tracking
+worker_state = {
+    "status": "idle", # or "processing"
+    "current_task": None,
+    "completed_tasks": 0,
+    "failed_tasks": 0,
+    "queue_size": 0 # Approximate
+}
+
 class ChapterRequest(BaseModel):
     url: str
     series_title: str
@@ -33,6 +42,10 @@ class ChapterRequest(BaseModel):
     series_code: str = None # Optional
 
 async def process_chapter_task(req: ChapterRequest):
+    global worker_state
+    worker_state["status"] = "processing"
+    worker_state["current_task"] = f"{req.series_title} #{req.chapter_number}"
+    
     print(f"🚀 [Server] Iniciando tarea de fondo para: {req.url}")
     
     try:
@@ -52,27 +65,36 @@ async def process_chapter_task(req: ChapterRequest):
         
         if not download_dir or count == 0:
             print("❌ [Server] Falló la descarga o no se encontraron imágenes.")
-            # TODO: Notify Backend of Failure
+            worker_state["failed_tasks"] += 1
             return
 
         print(f"✅ [Server] Descarga exitosa ({count} imágenes). Iniciando subida...")
 
         # 3. Upload to B2 (using Env Creds)
-        # Note: server should have API_USER/API_PASS in env
         success = await worker.upload_directory_to_b2(download_dir)
         
         if success:
             print(f"✨ [Server] Subida completada para {req.series_title} - Cap {req.chapter_number}")
+            worker_state["completed_tasks"] += 1
             await notify_backend_completion(req)
         else:
             print("❌ [Server] Falló la subida a B2.")
-            # TODO: Notify Backend of Failure
+            worker_state["failed_tasks"] += 1
 
-        # 4. Cleanup (Optional: Remove local files if upload success)
+        # 4. Cleanup
         # shutil.rmtree(download_dir) 
         
     except Exception as e:
         print(f"🔥 Error Crítico en worker: {e}")
+        worker_state["failed_tasks"] += 1
+    finally:
+        worker_state["status"] = "idle"
+        worker_state["current_task"] = None
+
+@app.get("/status")
+def get_status(api_key: str = Depends(get_api_key)):
+    """Returns current worker state"""
+    return worker_state
 
 async def notify_backend_completion(req: ChapterRequest):
     url = f"{worker.API_BASE_URL}/chapters/completed/"
@@ -113,4 +135,9 @@ async def start_download(req: ChapterRequest, background_tasks: BackgroundTasks,
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "MangaWorker"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Run on 0.0.0.0 to be accessible, port 8001 as configured
+    uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)
 
