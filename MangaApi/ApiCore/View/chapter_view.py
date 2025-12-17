@@ -30,6 +30,7 @@ class ChapterViewSet(viewsets.ModelViewSet):
         url = request.data.get('url')
         manga_id = request.data.get('manga_id')
         chapter_num = request.data.get('chapter_num')
+        series_code = request.data.get('series_code') # Optional
         
         if not url or not manga_id:
             return Response({'error': 'URL and Manga ID are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -57,7 +58,8 @@ class ChapterViewSet(viewsets.ModelViewSet):
         payload = {
             "url": url,
             "series_title": series_title,
-            "chapter_number": int(chapter_num) if chapter_num else 1
+            "chapter_number": int(chapter_num) if chapter_num else 1,
+            "series_code": series_code
         }
         
         headers = {

@@ -28,6 +28,12 @@ const uploading = ref(false)
 const message = ref('')
 const error = ref('')
 
+// Modes: 'manual' | 'url'
+const uploadMode = ref('manual')
+const importUrl = ref('')
+const useManualCode = ref(false)
+const manualSeriesCode = ref('')
+
 const normalizedChapterNumber = computed(() => pad3(chapterNumber.value))
 const normalizedPagesCount = computed(() => Number(pagesCount.value) || 0)
 
@@ -240,6 +246,37 @@ async function submit() {
   message.value = ''
   const payload = chapterPayload.value
   
+  // Worker Mode Logic
+  if (uploadMode.value === 'url') {
+    if (!payload.manga || !payload.capitulo_numero || !importUrl.value) {
+       error.value = 'Para importar: Seleccióna Manga, Número de Capítulo y URL.'
+       return
+    }
+    
+    if (useManualCode.value && !manualSeriesCode.value) {
+        error.value = 'Has marcado "Usar código manual" pero no has ingresado ninguno.'
+        return
+    }
+    
+    uploading.value = true
+    try {
+       const res = await api.post('chapters/fetch/', {
+          url: importUrl.value,
+          manga_id: payload.manga,
+          chapter_num: payload.capitulo_numero,
+          series_code: useManualCode.value ? manualSeriesCode.value : null
+       })
+       message.value = 'Tarea iniciada correctamente en el Worker. Las imágenes aparecerán pronto.'
+       importUrl.value = ''
+    } catch (e) {
+       error.value = e.response?.data?.error || e.message || 'Error al iniciar tarea en worker'
+    } finally {
+       uploading.value = false
+    }
+    return
+  }
+
+  // Manual Mode Validation
   if (!payload.manga || !payload.capitulo_numero || !normalizedPagesCount.value || !seriesCode.value) {
     error.value = 'Completa Manga, Código de serie, Número y Cantidad de páginas.'
     return
@@ -324,7 +361,19 @@ async function updateChapter() {
     <h2 class="mb-3">Subir Capítulo</h2>
     <p class="text-muted">Genera automáticamente las URLs de imágenes y crea el capítulo.</p>
     <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
+    <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
     <div v-if="message" class="alert alert-success py-2">{{ message }}</div>
+    
+    <!-- Mode Switcher -->
+    <ul class="nav nav-pills mb-3">
+      <li class="nav-item">
+        <a class="nav-link" :class="{ active: uploadMode === 'manual' }" href="#" @click.prevent="uploadMode = 'manual'">Subida Manual</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" :class="{ active: uploadMode === 'url' }" href="#" @click.prevent="uploadMode = 'url'">Importar desde URL</a>
+      </li>
+    </ul>
+
     <form @submit.prevent="submit" class="v-stack gap-3">
       <div class="row g-3">
         <div class="col-md-6">
@@ -354,10 +403,29 @@ async function updateChapter() {
           <label class="form-label">Volumen</label>
           <input v-model="volume" type="number" class="form-control" placeholder="Opcional" />
         </div>
-        <div class="col-md-12">
+        <div class="col-md-12" v-if="uploadMode === 'manual'">
           <label class="form-label">Archivos del Capítulo (Imágenes)</label>
           <input id="fileInput" type="file" multiple accept="image/*" class="form-control" @change="handleFiles" />
           <small class="text-muted">Selecciona las imágenes en orden. Se renombrarán automáticamente a 001.webp, 002.webp, etc.</small>
+        </div>
+        
+        <div class="col-md-12" v-if="uploadMode === 'url'">
+           <label class="form-label">URL del Capítulo (Scraper)</label>
+           <input v-model="importUrl" type="url" class="form-control" placeholder="https://sitio-manga.com/ver/capitulo-1" />
+           
+           <div class="form-check mt-3">
+             <input class="form-check-input" type="checkbox" id="manualCodeCheck" v-model="useManualCode">
+             <label class="form-check-label" for="manualCodeCheck">
+               Usar código de serie manual / existente
+             </label>
+           </div>
+           
+           <div v-if="useManualCode" class="mt-2">
+             <input v-model="manualSeriesCode" type="text" class="form-control" placeholder="Ej: naruto-shippuden (nombre de carpeta)" />
+             <small class="text-muted">Si no se especifica, se generará automáticamente basado en el título.</small>
+           </div>
+           
+           <small class="text-muted d-block mt-2">El worker descargará las imágenes, las subirá a B2 y creará el capítulo automáticamente.</small>
         </div>
         <div class="col-md-4">
           <label class="form-label">Cantidad de páginas</label>
@@ -377,7 +445,8 @@ async function updateChapter() {
 
       <div>
         <button :disabled="uploading" class="btn btn-primary me-2">
-          <span v-if="uploading">Subiendo... {{ uploadProgress }}%</span><span v-else>Subir capítulo</span>
+          <span v-if="uploading">{{ uploadMode === 'url' ? 'Iniciando...' : 'Subiendo...' }} {{ uploadMode === 'manual' ? uploadProgress + '%' : '' }}</span>
+          <span v-else>{{ uploadMode === 'url' ? 'Iniciar Importación' : 'Subir capítulo' }}</span>
         </button>
         <div v-if="uploading" class="progress mt-2" style="height: 5px;">
           <div class="progress-bar" role="progressbar" :style="{ width: uploadProgress + '%' }"></div>

@@ -30,13 +30,20 @@ class ChapterRequest(BaseModel):
     url: str
     series_title: str
     chapter_number: int
+    series_code: str = None # Optional
 
 async def process_chapter_task(req: ChapterRequest):
     print(f"🚀 [Server] Iniciando tarea de fondo para: {req.url}")
     
     try:
         # 1. Generate Codename & Paths
-        series_code = worker.codename_from_title(req.series_title)
+        if req.series_code:
+            series_code = req.series_code
+            print(f"🔹 [Server] Usando código manual: {series_code}")
+        else:
+            series_code = worker.codename_from_title(req.series_title)
+            print(f"🔹 [Server] Código generado: {series_code}")
+            
         base_chapters_dir = os.path.join(os.getcwd(), 'chapters', series_code)
         os.makedirs(base_chapters_dir, exist_ok=True)
         
