@@ -40,12 +40,12 @@
           <!-- Controles combinados: capítulo y página en paginado -->
           <div class="page-controls-wrapper d-flex justify-content-between align-items-center" :class="{ 'flex-row-reverse': isRTL }">
             <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goPrevChapter">
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior capítulo</span>
               </button>
-              <button class="btn btn-primary btn-sm d-flex align-items-center" @click="prevPage">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 14L5 8l6-6v12z"/></svg>
+              <button class="btn btn-primary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="prevPage">
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 14L5 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior página</span>
               </button>
             </div>
@@ -56,13 +56,13 @@
               @go="goToPage"
             />
             <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
-              <button class="btn btn-primary btn-sm d-flex align-items-center" @click="nextPage">
+              <button class="btn btn-primary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="nextPage">
                 <span class="btn-label">Siguiente página</span>
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
               </button>
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goNextChapter">
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goNextChapter">
                 <span class="btn-label">Siguiente capítulo</span>
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
               </button>
             </div>
           </div>
@@ -74,15 +74,15 @@
           </div>
           <div class="cascade-controls-bar d-flex justify-content-between align-items-center mt-3" :class="{ 'flex-row-reverse': isRTL }">
             <div>
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goPrevChapter">
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior capítulo</span>
               </button>
             </div>
             <div>
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goNextChapter">
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goNextChapter">
                 <span class="btn-label">Siguiente capítulo</span>
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
               </button>
             </div>
           </div>
@@ -97,12 +97,12 @@
           </div>
           <div class="page-controls-wrapper d-flex justify-content-between align-items-center" :class="{ 'flex-row-reverse': isRTL }">
             <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goPrevChapter">
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior capítulo</span>
               </button>
-              <button class="btn btn-primary btn-sm d-flex align-items-center" @click="prevPair" :disabled="pairIndex === 0">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 14L5 8l6-6v12z"/></svg>
+              <button class="btn btn-primary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="prevPair" :disabled="pairIndex === 0">
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 14L5 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior página</span>
               </button>
             </div>
@@ -113,13 +113,13 @@
               @go="goToPair"
             />
             <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
-              <button class="btn btn-primary btn-sm d-flex align-items-center" @click="nextPair" :disabled="pairIndex >= pairedPages.length - 1">
+              <button class="btn btn-primary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="nextPair" :disabled="pairIndex >= pairedPages.length - 1">
                 <span class="btn-label">Siguiente página</span>
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
               </button>
-              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goNextChapter">
+              <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" :class="{ 'flex-row-reverse': isRTL }" @click="goNextChapter">
                 <span class="btn-label">Siguiente capítulo</span>
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
+                <svg class="icon" :class="{ 'rtl-flip': isRTL }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.5 2l6 6-6 6V2zM2 2l6 6-6 6V2z"/></svg>
               </button>
             </div>
           </div>
@@ -594,4 +594,5 @@ export default {
 .libreta-pair-inner.single-right { justify-content: flex-end }
 
 
+.rtl-flip { transform: scaleX(-1); }
 </style>

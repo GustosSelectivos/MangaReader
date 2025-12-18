@@ -33,7 +33,7 @@ class MangaViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"Failed to init folders for {instance.codigo}: {e}")
 
-    @action(detail=True, methods=['post'], url_path='increment-view')
+    @action(detail=True, methods=['post'], url_path='increment-view', permission_classes=[AllowAny])
     def increment_view(self, request, pk=None):
         try:
             obj = self.get_object()
