@@ -13,6 +13,7 @@ import time
 
 
 from dotenv import load_dotenv
+from PIL import Image
 
 # Cargar variables de entorno desde .env si existe
 load_dotenv()
@@ -97,22 +98,22 @@ async def upload_file_via_api(session, local_path, relative_path, token):
     return True
 
 async def upload_directory_to_b2(local_dir, username=None, password=None, token=None):
-    # 1. Login (if token not provided)
-    if not token:
-        username = username or os.getenv("API_USER")
-        password = password or os.getenv("API_PASS")
-        
-        if not username or not password:
-            print("❌ Error: Credenciales API no proporcionadas (API_USER/API_PASS en .env o argumentos)")
-            return False
-    
-        print(f"🔑 Autenticando en API Backend ({API_BASE_URL})...")
-        async with aiohttp.ClientSession() as session:
-            token = await login_and_get_token(session, username, password)
+    async with aiohttp.ClientSession() as session:
+        # 1. Login (if token not provided)
+        if not token:
+            username = username or os.getenv("API_USER")
+            password = password or os.getenv("API_PASS")
             
-    if not token:
-        print("❌ No se pudo loguear en el API. No se puede subir.")
-        return False
+            if not username or not password:
+                print("❌ Error: Credenciales API no proporcionadas (API_USER/API_PASS en .env o argumentos)")
+                return False
+        
+            print(f"🔑 Autenticando en API Backend ({API_BASE_URL})...")
+            token = await login_and_get_token(session, username, password)
+                
+        if not token:
+            print("❌ No se pudo loguear en el API. No se puede subir.")
+            return False
 
         print("✅ Autenticado. Iniciando subida...")
         
@@ -230,6 +231,36 @@ def renumber_images(directory):
         os.rename(temp_path, new_path)
         
     print(f"✅ Renombrado completado: 001.webp - {len(files):03d}.webp")
+
+def optimize_images(directory):
+    """Optimiza las imágenes en el directorio (convertir a WebP q=80)"""
+    print(f"🔄 Optimizando imágenes en {directory} (WebP q=80)...")
+    
+    files = [f for f in os.listdir(directory) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+    if not files:
+        print("⚠️ No hay imágenes para optimizar.")
+        return
+
+    count = 0
+    for filename in files:
+        filepath = os.path.join(directory, filename)
+        try:
+            with Image.open(filepath) as img:
+                # Force load data to ensure we can overwrite safely
+                img.load()
+                
+                # Convert to RGB if needed (e.g. RGBA or P)
+                if img.mode not in ("RGB", "L"):
+                    img = img.convert("RGB")
+                    
+                # Save overwriting the file
+                img.save(filepath, "WEBP", quality=80, lossless=False)
+                count += 1
+                # print(f"  ✨ Optimizado: {filename}", end='\r')
+        except Exception as e:
+            print(f"  ❌ Error optimizando {filename}: {e}")
+            
+    print(f"✅ Optimización completa: {count} imágenes procesadas.")
 
 # def get_open_windows(): ... (Removed ctypes logic for simplicity as requested)
 
@@ -357,6 +388,10 @@ async def manual_audit_and_upload(download_dir):
         else:
              print("\n🔄 Auditando y Renombrando secuencia...")
              renumber_images(download_dir)
+             
+        # 4.1b Optimización Automática
+        print("\n⚙️ Ejecutando optimización de imágenes (WebP q=80)...")
+        optimize_images(download_dir)
 
         # 4.2 Confirmar SUBIDA
         upload_confirm = input("\n👉 ¿Listo para subir a Backblaze? (Escribe 'S' y Enter): ").strip()
@@ -379,26 +414,36 @@ if __name__ == "__main__":
             print("❌ URL requerida")
             exit()
             
-        series_title = input("Ingrese el título de la serie: ").strip()
-        if not series_title:
-             print("❌ Título requerido")
-             exit()
-             
-        # Generar codename
-        try:
-            series_code = codename_from_title(series_title)
-            print(f"🔹 Codename generado: {series_code}")
+        mode_input = input("¿Identificar serie por [T]ítulo o [C]ódigo? (T/c): ").strip().lower()
+        
+        series_code = None
+        
+        if mode_input == 'c':
+            series_code = input("Ingrese el CÓDIGO de la serie (ej. dl-787f97): ").strip()
+            if not series_code:
+                print("❌ Código requerido")
+                exit()
+        else:
+            series_title = input("Ingrese el título de la serie: ").strip()
+            if not series_title:
+                 print("❌ Título requerido")
+                 exit()
             
-            # Definir directorio base: chapters/{code}
-            base_chapters_dir = os.path.join(os.getcwd(), 'chapters', series_code)
-            if not os.path.exists(base_chapters_dir):
-                print(f"📂 Creando directorio de serie: {base_chapters_dir}")
-                os.makedirs(base_chapters_dir, exist_ok=True)
-            else:
-                print(f"📂 Directorio de serie existente: {base_chapters_dir}")
-        except Exception as e:
-            print(f"❌ Error generando codename: {e}")
-            exit()
+            # Generar codename
+            try:
+                series_code = codename_from_title(series_title)
+                print(f"🔹 Codename generado: {series_code}")
+            except Exception as e:
+                print(f"❌ Error generando codename: {e}")
+                exit()
+
+        # Definir directorio base: chapters/{code}
+        base_chapters_dir = os.path.join(os.getcwd(), 'chapters', series_code)
+        if not os.path.exists(base_chapters_dir):
+            print(f"📂 Creando directorio de serie: {base_chapters_dir}")
+            os.makedirs(base_chapters_dir, exist_ok=True)
+        else:
+            print(f"📂 Directorio de serie existente: {base_chapters_dir}")
             
         chap_num_str = input("Ingrese el número del capítulo (ej. 1): ").strip()
         try:

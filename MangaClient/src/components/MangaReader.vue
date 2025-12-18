@@ -7,6 +7,7 @@
         @next="goNextChapter"
       >
         <template #actions>
+          <span class="badge bg-warning text-dark me-2" v-if="true">Dir: {{ direction }} | RTL: {{ isRTL }}</span>
           <div class="view-mode-toggle btn-group btn-group-sm" role="group">
             <button :class="['btn','btn-sm','d-flex','align-items-center', viewMode === 'paginated' ? 'btn-primary' : 'btn-outline-secondary']" @click="setView('paginated')">
               <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h9v7H2zM5 6h9v7H5z"/></svg>
@@ -37,8 +38,8 @@
           </div>
 
           <!-- Controles combinados: capítulo y página en paginado -->
-          <div class="page-controls-wrapper d-flex justify-content-between align-items-center">
-            <div class="d-flex gap-2 align-items-center">
+          <div class="page-controls-wrapper d-flex justify-content-between align-items-center" :class="{ 'flex-row-reverse': isRTL }">
+            <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
               <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior capítulo</span>
@@ -54,7 +55,7 @@
               :hideButtons="true"
               @go="goToPage"
             />
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
               <button class="btn btn-primary btn-sm d-flex align-items-center" @click="nextPage">
                 <span class="btn-label">Siguiente página</span>
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
@@ -71,7 +72,7 @@
           <div v-for="(p, i) in pages" :key="i" class="cascade-page" :ref="el => setCascadePageRef(el, i)">
             <PageViewer :image="p" :fitMode="'contain'" :noMaxHeight="true" />
           </div>
-          <div class="cascade-controls-bar d-flex justify-content-between align-items-center mt-3">
+          <div class="cascade-controls-bar d-flex justify-content-between align-items-center mt-3" :class="{ 'flex-row-reverse': isRTL }">
             <div>
               <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
@@ -94,8 +95,8 @@
                 <PageViewer v-for="(item, i) in currentPair" :key="(item.url || '') + i" :image="item.url || item" :fitMode="'contain'" :noMaxHeight="true" :class="[getLibretaClass(item)]" />
             </div>
           </div>
-          <div class="page-controls-wrapper d-flex justify-content-between align-items-center">
-            <div class="d-flex gap-2 align-items-center">
+          <div class="page-controls-wrapper d-flex justify-content-between align-items-center" :class="{ 'flex-row-reverse': isRTL }">
+            <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
               <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" @click="goPrevChapter">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M9.5 14L3.5 8l6-6v12zM14 14L8 8l6-6v12z"/></svg>
                 <span class="btn-label">Anterior capítulo</span>
@@ -111,7 +112,7 @@
               :hideButtons="true"
               @go="goToPair"
             />
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center" :class="{ 'flex-row-reverse': isRTL }">
               <button class="btn btn-primary btn-sm d-flex align-items-center" @click="nextPair" :disabled="pairIndex >= pairedPages.length - 1">
                 <span class="btn-label">Siguiente página</span>
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2l6 6-6 6V2z"/></svg>
@@ -163,6 +164,8 @@ export default {
     const viewerGap = ref('spacious')
     const cascadePageEls = ref([])
     const preloadedSet = new Set()
+
+    const isRTL = computed(() => props.direction === 'rtl')
 
     watch(() => props.initialPage, (v) => { currentPage.value = v })
     watch(currentPage, () => preloadUpcoming())
@@ -547,7 +550,7 @@ export default {
     watch(pairIndex, () => preloadLibreta())
     watch(pairedPages, () => preloadLibreta())
 
-    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass, onSinglePointer, onLibretaPointer }
+    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass, onSinglePointer, onLibretaPointer, isRTL }
   }
 }
 </script>
