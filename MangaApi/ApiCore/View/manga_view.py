@@ -14,7 +14,7 @@ from ApiCore.access_control import DRFDACPermission
 
 
 class MangaViewSet(viewsets.ModelViewSet):
-    queryset = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
+    # queryset = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
     serializer_class = MangaSerializer
     # Use DAC permission: read allowed to all, writes require DAC 'write' on the object
     permission_classes = [DRFDACPermission]
@@ -22,6 +22,17 @@ class MangaViewSet(viewsets.ModelViewSet):
     filterset_class = MangaFilter
     search_fields = ['titulo', 'sinopsis']
     ordering_fields = ['vistas', 'titulo', 'creado_en', 'actualizado_en']
+
+    def get_queryset(self):
+        qs = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
+        
+        print(f"DEBUG_MANGA: User={self.request.user}, Auth={self.request.user.is_authenticated}")
+        # Restricción de contenido +18 para usuarios anónimos
+        if not self.request.user.is_authenticated:
+            print("DEBUG_MANGA: Applying filter erotico=False")
+            qs = qs.filter(erotico=False)
+            
+        return qs
 
     def perform_create(self, serializer):
         instance = serializer.save()
