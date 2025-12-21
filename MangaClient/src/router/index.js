@@ -20,7 +20,8 @@ const router = createRouter({
     {
       path: '/library',
       name: 'library',
-      component: LibraryView,
+      redirect: '/', // Library disabled
+      // component: LibraryView,
     },
     {
       path: '/reader/:mangaId',
