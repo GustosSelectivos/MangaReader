@@ -1,8 +1,7 @@
 import os
 import asyncio
 import aiohttp
-import boto3
-from botocore.config import Config
+
 from tqdm.asyncio import tqdm
 from io import BytesIO
 import hashlib
@@ -19,10 +18,6 @@ from PIL import Image
 load_dotenv()
 
 # Configuración básica
-B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME")
-B2_ENDPOINT = os.getenv("B2_ENDPOINT")
-B2_KEY_ID = os.getenv("B2_KEY_ID")
-B2_APP_KEY = os.getenv("B2_APP_KEY")
 
 # API Configuration to match Frontend
 # API Configuration

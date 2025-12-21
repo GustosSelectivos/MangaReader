@@ -38,42 +38,33 @@
                 <select v-model="type">
                   <option value="">Ver todo</option>
                   <option value="manga">Manga</option>
-                  <option value="manhua">Manhua</option>
                   <option value="manhwa">Manhwa</option>
+                  <option value="manhua">Manhua</option>
                   <option value="novel">Novela</option>
                   <option value="one_shot">One shot</option>
                   <option value="doujinshi">Doujinshi</option>
-                  <option value="oel">Oel</option>
+                  <option value="comic">Comic</option>
                 </select>
               </div>
               <div class="field">
                 <label>Demografía</label>
                 <select v-model="demography">
                   <option value="">Ver todo</option>
-                  <option value="seinen">Seinen</option>
-                  <option value="shoujo">Shoujo</option>
-                  <option value="shounen">Shounen</option>
-                  <option value="josei">Josei</option>
-                  <option value="kodomo">Kodomo</option>
+                  <option value="Seinen">Seinen</option>
+                  <option value="Shoujo">Shoujo</option>
+                  <option value="Shounen">Shounen</option>
+                  <option value="Josei">Josei</option>
+                  <option value="Kodomo">Kodomo</option>
                 </select>
               </div>
               <div v-if="showStatus" class="field">
                 <label>Estado</label>
                 <select v-model="status">
                   <option value="">Ver todo</option>
-                  <option value="publishing">Publicándose</option>
-                  <option value="ended">Finalizado</option>
-                  <option value="cancelled">Cancelado</option>
-                  <option value="on_hold">Pausado</option>
-                </select>
-              </div>
-              <div v-if="showStatus" class="field">
-                <label>Traducciones</label>
-                <select v-model="translationStatus">
-                  <option value="">Ver todo</option>
-                  <option value="active">Activo</option>
-                  <option value="finished">Finalizado</option>
-                  <option value="abandoned">Abandonado</option>
+                  <option value="Publicándose">Publicándose</option>
+                  <option value="Finalizado">Finalizado</option>
+                  <option value="Cancelado">Cancelado</option>
+                  <option value="Pausado">Pausado</option>
                 </select>
               </div>
             </div>
@@ -187,9 +178,6 @@ export default {
     const type = ref('')
     const demography = ref('')
     const status = ref('')
-    const translationStatus = ref('')
-    const webcomic = ref('')
-    const yonkoma = ref('')
     const amateur = ref('')
     const erotic = ref('')
 
@@ -242,9 +230,9 @@ export default {
         type: type.value || undefined,
         demography: demography.value || undefined,
         status: status.value || undefined,
-        translation_status: translationStatus.value || undefined,
-        webcomic: webcomic.value || undefined,
-        yonkoma: yonkoma.value || undefined,
+        translation_status: undefined,
+        webcomic: undefined,
+        yonkoma: undefined,
         amateur: amateur.value || undefined,
         // STRICT EROTIC FILTER ENFORCEMENT
         erotic: (!isAuthenticated.value) ? 'false' : (erotic.value || undefined),
@@ -412,7 +400,7 @@ export default {
         id,
         title,
         cover,
-        type: raw.type || raw.book_type || 'manga',
+        type: raw.type || raw.book_type || raw.tipo_serie || 'manga',
         demography: dem,
         dem_color,
         tags: raw.tags || []
@@ -517,8 +505,8 @@ export default {
     return {
       mangas, loading, error,
       search, orderItem, orderDir,
-      type, demography, status, translationStatus,
-      webcomic, yonkoma, amateur, erotic,
+      type, demography, status,
+      amateur, erotic,
       isAuthenticated,
       includeGenres, excludeGenres, genres, genreLimit,
       openSection, toggleSection, enforceGenreLimit,

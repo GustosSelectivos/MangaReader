@@ -26,10 +26,8 @@ class MangaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
         
-        print(f"DEBUG_MANGA: User={self.request.user}, Auth={self.request.user.is_authenticated}")
         # Restricción de contenido +18 para usuarios anónimos
         if not self.request.user.is_authenticated:
-            print("DEBUG_MANGA: Applying filter erotico=False")
             qs = qs.filter(erotico=False)
             
         return qs

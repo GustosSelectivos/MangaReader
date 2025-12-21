@@ -4,8 +4,12 @@ from ApiCore.Models.manga_models import manga, manga_cover
 
 class MangaFilter(filters.FilterSet):
     titulo = filters.CharFilter(field_name='titulo', lookup_expr='icontains')
-    estado = filters.NumberFilter(field_name='estado__id')
-    demografia = filters.NumberFilter(field_name='demografia__id')
+    # Permitir filtrar por nombre de estado/demografia (case insensitive)
+    estado = filters.CharFilter(field_name='estado__descripcion', lookup_expr='icontains')
+    demografia = filters.CharFilter(field_name='demografia__descripcion', lookup_expr='icontains')
+    # Alias 'type' para 'tipo_serie'
+    type = filters.CharFilter(field_name='tipo_serie', lookup_expr='iexact')
+    
     autor = filters.NumberFilter(field_name='autor__id')
     fecha_from = filters.DateFilter(field_name='fecha_lanzamiento', lookup_expr='gte')
     fecha_to = filters.DateFilter(field_name='fecha_lanzamiento', lookup_expr='lte')
@@ -14,7 +18,7 @@ class MangaFilter(filters.FilterSet):
 
     class Meta:
         model = manga
-        fields = ['titulo', 'estado', 'demografia', 'autor', 'fecha_from', 'fecha_to', 'vigente', 'erotico']
+        fields = ['titulo', 'estado', 'demografia', 'autor', 'fecha_from', 'fecha_to', 'vigente', 'erotico', 'type']
 
 
 class MangaCoverFilter(filters.FilterSet):
