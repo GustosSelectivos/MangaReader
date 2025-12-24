@@ -227,9 +227,9 @@ def renumber_images(directory):
         
     print(f"✅ Renombrado completado: 001.webp - {len(files):03d}.webp")
 
-def optimize_images(directory):
-    """Optimiza las imágenes en el directorio (convertir a WebP q=80)"""
-    print(f"🔄 Optimizando imágenes en {directory} (WebP q=80)...")
+def optimize_images(directory, quality=80):
+    """Optimiza las imágenes en el directorio (convertir a WebP con calidad variable)"""
+    print(f"🔄 Optimizando imágenes en {directory} (WebP q={quality})...")
     
     files = [f for f in os.listdir(directory) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
     if not files:
@@ -249,7 +249,7 @@ def optimize_images(directory):
                     img = img.convert("RGB")
                     
                 # Save overwriting the file
-                img.save(filepath, "WEBP", quality=80, lossless=False)
+                img.save(filepath, "WEBP", quality=quality, lossless=False)
                 count += 1
                 # print(f"  ✨ Optimizado: {filename}", end='\r')
         except Exception as e:
@@ -257,7 +257,70 @@ def optimize_images(directory):
             
     print(f"✅ Optimización completa: {count} imágenes procesadas.")
 
-# def get_open_windows(): ... (Removed ctypes logic for simplicity as requested)
+def append_to_update_list(url):
+    """
+    Agrega la URL a serie_update_tmoazul.py en MangaScripts/TMOAzul.
+    Crea el archivo si no existe con la estructura de lista.
+    """
+    try:
+        # Determine path: ../MangaScripts/TMOAzul/serie_update_tmoazul.py 
+        # Relative to MangaWorker/worker.py (cwd expected to be MangaWorker usually? No, cwd is printed as worker_root)
+        # In main execution: os.getcwd() often project root or MangaWorker.
+        # Let's use relative to known location of worker.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        target_dir = os.path.abspath(os.path.join(current_dir, "..", "MangaScripts", "TMOAzul"))
+        target_file = os.path.join(target_dir, "serie_update_tmoazul.py")
+        
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # Read existing to see if we need to initialize or just append
+        new_file = not os.path.exists(target_file)
+        
+        with open(target_file, "a", encoding="utf-8") as f:
+            if new_file:
+                f.write("def link_series_update():\n")
+                f.write("    return [\n")
+            
+            # Appending a line. 
+            # Note: If we just append to the file, and it ended with "    ]", we might break structure if we don't handle it.
+            # But the user asked for a .py "donde se guarden".
+            # The simplest valid python appendable structure without parsing is difficult if inside a function return.
+            # ALTERNATIVE: Just a list variable "series = [...]" at top level.
+            # But user example had a function.
+            # Let's try to do it properly: Read lines, insert before closing bracket?
+            pass
+        
+        # Re-read and rewrite safely
+        lines = []
+        if not new_file:
+            with open(target_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        
+        if new_file or not lines:
+             lines = ["def link_series_update():\n", "    return [\n", "    ]\n"]
+
+        # Insert before the last line (assuming it is "    ]" or similar closing)
+        # Find the closing bracket
+        insert_idx = -1
+        for i in range(len(lines)-1, -1, -1):
+            if "]" in lines[i]:
+                insert_idx = i
+                break
+        
+        if insert_idx != -1:
+            lines.insert(insert_idx, f'        "{url}",\n')
+        else:
+            # Fallback if structure broken
+            lines.append(f'        "{url}",\n')
+
+        with open(target_file, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+            
+        print(f"✅ Guardado en lista de actualización: {url}")
+        print(f"   📂 {target_file}")
+
+    except Exception as e:
+        print(f"❌ Error guardando en lista de actualización: {e}")
 
 
 async def process_chapter(chapter_url, chapter_num, series_base_dir):
@@ -281,29 +344,44 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
         "Referer": f"https://{domain}/"
     }
     
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(chapter_url) as response:
-            if response.status != 200:
-                print(f"❌ Error al acceder al capítulo: {response.status}")
-                return None, 0
-            html = await response.text()
-            print(f"📍 URL Final tras redirección: {response.url}")
+    import requests
+    try:
+        # Use requests (sync) instead of aiohttp because aiohttp is getting 500 errors on this site
+        # Run in executor to avoid blocking the event loop
+        loop = asyncio.get_running_loop()
+        def fetch_sync():
+            return requests.get(chapter_url, headers=headers)
             
-            # TMO/ZonaTMO Specific: Switch to Cascade if stuck on Paginated
-            final_url = str(response.url)
-            if "/paginated" in final_url:
-                print("🔄 Detectado modo 'Paginated'. Cambiando a 'Cascade' para ver todas las imágenes...")
-                cascade_url = final_url.replace("/paginated", "/cascade")
+        response = await loop.run_in_executor(None, fetch_sync)
+        
+        if response.status_code != 200:
+            print(f"❌ Error al acceder al capítulo: {response.status_code}")
+            return None, 0
+            
+        html = response.text
+        print(f"📍 URL Final: {response.url}")
+        
+        # TMO/ZonaTMO Specific: Switch to Cascade if stuck on Paginated
+        final_url = str(response.url)
+        if "/paginated" in final_url:
+            print("🔄 Detectado modo 'Paginated'. Cambiando a 'Cascade' para ver todas las imágenes...")
+            cascade_url = final_url.replace("/paginated", "/cascade")
+            headers["Referer"] = f"https://{domain}/"
+            
+            def fetch_cascade():
+                 return requests.get(cascade_url, headers=headers)
+            
+            cascade_resp = await loop.run_in_executor(None, fetch_cascade)
+            
+            if cascade_resp.status_code == 200:
+                html = cascade_resp.text
+                print(f"✅ Éxito cambianda a Cascade: {cascade_url}")
+            else:
+                print(f"⚠️ Falló el cambio a Cascade ({cascade_resp.status_code}). Usando HTML original.")
                 
-                # Update headers for the new request
-                headers["Referer"] = f"https://{domain}/"
-                
-                async with session.get(cascade_url) as cascade_response:
-                    if cascade_response.status == 200:
-                        html = await cascade_response.text()
-                        print(f"✅ Éxito cambianda a Cascade: {cascade_url}")
-                    else:
-                        print(f"⚠️ Falló el cambio a Cascade ({cascade_response.status}). Usando HTML original.")
+    except Exception as e:
+        print(f"❌ Excepción al descargar HTML: {e}")
+        return None, 0
 
     from bs4 import BeautifulSoup
     import re
@@ -318,7 +396,8 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
     
     for img in images:
         src = img.get('src')
-        if src and ('uploads' in src or 'storage' in src) and not 'logo' in src:
+        # Updated condition to include ikigai images
+        if src and ('uploads' in src or 'storage' in src or 'ikigai' in src) and not 'logo' in src:
             # Convert to absolute URL
             src = urljoin(chapter_url, src)
             image_urls.append(src)
@@ -358,45 +437,161 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
         
         return download_dir, total_images
 
-async def manual_audit_and_upload(download_dir):
-        # 4. AUDITORÍA MANUAL
+async def process_post_download(download_dir, options):
+    """
+    Ejecuta el pipeline de post-procesamiento basado en las opciones dadas.
+    options = {
+        'renumber': bool,
+        'optimize': bool,
+        'quality': int,
+        'upload': bool,
+        'update_list': bool,
+        'series_url': str (optional),
+        'interactive': bool (if True, asks for confirmation steps like before)
+    }
+    """
+    
+    # 4. AUDITORIA / RENOMBRADO
+    if options.get('interactive'):
         print("\n" + "="*50)
         print("👀  MODO AUDITORÍA  👀")
         print("="*50)
-        print("1. Abre la carpeta 'downloads' y BORRA las imágenes que no quieras (publicidad, etc).")
-        print("2. Verifica que el orden sea correcto.")
-        
-        # Abrir carpeta automáticamente en Windows
+        # Abra carpeta solo si es interactivo (Individual)
         if os.name == 'nt':
             try:
                 os.startfile(os.path.abspath(download_dir))
             except:
                 pass
-
-        # Esperar cierre de carpeta en lugar de input manual
-        # wait_for_folder_close(download_dir)
         
-        # 4.1 Confirmar RENOMBRADO
         rename_confirm = input("\n👉 Presiona 's' y Enter para RENOMBRAR las imágenes: ").strip()
-        if rename_confirm.lower() != 's':
-             print("⚠️ Saltando renombrado...")
+        if rename_confirm.lower() == 's':
+            renumber_images(download_dir)
+    else:
+        # Modo Automático / Masivo
+        if options.get('renumber'):
+            renumber_images(download_dir)
+
+    # 4.1b Optimización
+    if options.get('optimize'):
+        quality = options.get('quality', 80)
+        
+        if options.get('interactive'):
+            print(f"\n⚙️  Configuración de Optimización (Actual: WebP q={quality})")
+            opt_confirm = input("👉 ¿Optimizar imágenes? [S/n]: ").strip().lower()
+            if opt_confirm != 'n':
+                q_input = input(f"   Calidad (1-100) [{quality}]: ").strip()
+                if q_input:
+                    try:
+                        quality = int(q_input)
+                    except:
+                        pass
+                print(f"🔄 Optimizando imágenes en {download_dir} (WebP q={quality})...")
+                optimize_images(download_dir, quality=quality)
+            else:
+                 print("⏩ Saltando optimización.")
         else:
-             print("\n🔄 Auditando y Renombrando secuencia...")
-             renumber_images(download_dir)
-             
-        # 4.1b Optimización Automática
-        print("\n⚙️ Ejecutando optimización de imágenes (WebP q=80)...")
-        optimize_images(download_dir)
+             print(f"\n⚙️ Ejecutando optimización de imágenes (WebP q={quality})...")
+             optimize_images(download_dir, quality=quality)
 
-        # 4.2 Confirmar SUBIDA
-        upload_confirm = input("\n👉 ¿Listo para subir a Backblaze? (Escribe 'S' y Enter): ").strip()
-        if upload_confirm.lower() != 's':
-             print("❌ Proceso cancelado. No se subió nada.")
-             return
+    # 4.2 SUBIDA
+    uploaded = False
+    if options.get('upload'):
+        if options.get('interactive'):
+            upload_confirm = input("\n👉 ¿Subir contenido a Backblaze? [s/N]: ").strip()
+            if upload_confirm.lower() != 's':
+                print("⏩ Saltando subida.")
+            else:
+                print("\n🚀 Iniciando subida a Backblaze (Vía API)...")
+                await upload_directory_to_b2(download_dir)
+                uploaded = True
+        else:
+            # Automático
+            print("\n🚀 Iniciando subida automática a Backblaze...")
+            await upload_directory_to_b2(download_dir)
+            uploaded = True
 
-        print("\n🚀 Iniciando subida a Backblaze (Vía API)...")
-        # Reuse existing upload function, this time asking inputs if needed or using env
-        await upload_directory_to_b2(download_dir)
+    # 4.3 Actualizar Estado en Lista
+    if options.get('update_list') and options.get('series_url'):
+        # Solo guardar si realmente se subió o si el usuario quiere forzarlo
+        # En masivo, asumimos que si se subió, se guarda.
+        if uploaded or options.get('force_update_list', False):
+             append_to_update_list(options['series_url'])
+    elif options.get('interactive'):
+         update_confirm = input("\n👉 ¿Cambiar estado si ( S ) o no ( N ), en la lista de la serie? ").strip()
+         if update_confirm.lower() == 's':
+            print("\nℹ️ Ingrese la URL de la SERIE para guardar en serie_update_tmoazul.py")
+            url_to_save = input("   URL: ").strip()
+            if url_to_save:
+                append_to_update_list(url_to_save)
+
+
+def get_mass_options():
+    print("\n--- Configuración de Descarga Masiva ---")
+    
+    # Defaults
+    opts = {
+        'skip_download': False,
+        'renumber': True,
+        'optimize': True,
+        'quality': 80,
+        'upload': False,
+        'update_list': False,
+        'series_url': None,
+        'interactive': False
+    }
+    
+    # Skip Download
+    sd = input("¿Saltar descarga (Solo procesar existentes)? [y/N]: ").strip().lower()
+    if sd == 'y':
+        opts['skip_download'] = True
+    
+    # Renombrar
+    r = input("¿Renombrar imágenes secuencialmente (001.webp...)? [S/n]: ").strip().lower()
+    if r == 'n': opts['renumber'] = False
+    
+    # Optimizar
+    o = input("¿Optimizar imágenes a WebP? [S/n]: ").strip().lower()
+    if o == 'n': 
+        opts['optimize'] = False
+    else:
+        try:
+            q = input("   Calidad (1-100) [80]: ").strip()
+            if q: opts['quality'] = int(q)
+        except:
+            pass
+            
+    # Subir
+    u = input("¿Subir automáticamente a Backblaze? [y/N]: ").strip().lower()
+    if u == 'y':
+        opts['upload'] = True
+        
+        # Si sube, preguntar si agregar a lista de updates
+        ul = input("¿Agregar serie a lista de actualizaciones (serie_update_tmoazul)? [y/N]: ").strip().lower()
+        if ul == 'y':
+            opts['update_list'] = True
+            opts['series_url'] = input("   Ingrese URL de la Serie (para tracking): ").strip()
+
+    return opts
+
+def load_ikigai_links():
+    import importlib.util
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scraper_path = os.path.join(current_dir, "..", "MangaScripts", "Scraper", "scraper_ikigai.py")
+        scraper_path = os.path.abspath(scraper_path)
+        
+        if not os.path.exists(scraper_path):
+            print(f"❌ No se encontró el archivo del scraper en: {scraper_path}")
+            print("   Ejecuta primero el scraper para generar los links.")
+            return []
+            
+        spec = importlib.util.spec_from_file_location("scraper_ikigai", scraper_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.link_capitulos()
+    except Exception as e:
+        print(f"❌ Error importando scraper: {e}")
+        return []
 
 if __name__ == "__main__":
     try:
@@ -404,12 +599,45 @@ if __name__ == "__main__":
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             
         print("=== MangaWorker: Descargador Manual ===")
-        url_input = input("Ingrese la URL del capítulo: ").strip()
-        if not url_input:
-            print("❌ URL requerida")
-            exit()
+        print("1. Descarga Individual (Un solo capítulo)")
+        print("2. Descarga Masiva (Desde scraper_ikigai.py)")
+        
+        opcion = input("Seleccione una opción (1/2): ").strip()
+        
+        links_to_download = []
+        mass_options = {}
+        
+        if opcion == '2':
+            print("\n--- Modo Descarga Masiva ---")
+            print("Cargando links de MangaScripts/Scraper/scraper_ikigai.py...")
+            links = load_ikigai_links()
+            if not links:
+                print("❌ No se cargaron links. Abortando.")
+                exit()
+            print(f"✅ Se cargaron {len(links)} capítulos para descargar.")
+            links_to_download = links
             
-        mode_input = input("¿Identificar serie por [T]ítulo o [C]ódigo? (T/c): ").strip().lower()
+            # Obtener configuracion global
+            mass_options = get_mass_options()
+            
+        else:
+            url_input = input("Ingrese la URL del capítulo: ").strip()
+            if not url_input:
+                print("❌ URL requerida")
+                exit()
+            links_to_download = [url_input]
+            # Opciones "interactivas" para modo individual (comportamiento legacy pero mejorado)
+            # Antes: renumber=False, optimize=False, upload=False
+            # Ahora: True por defecto, pero el modo 'interactive' permitirá confirmar/cancelar pasos.
+            mass_options = {
+                'interactive': True, 
+                'renumber': True, 
+                'optimize': True, 
+                'upload': True,
+                'quality': 80
+            }
+
+        mode_input = input("\n¿Identificar serie por [T]ítulo o [C]ódigo? (T/c): ").strip().lower()
         
         series_code = None
         
@@ -440,17 +668,46 @@ if __name__ == "__main__":
         else:
             print(f"📂 Directorio de serie existente: {base_chapters_dir}")
             
-        chap_num_str = input("Ingrese el número del capítulo (ej. 1): ").strip()
-        try:
-            chap_num = int(chap_num_str)
-        except:
-            chap_num = 1
-            print("⚠️ Número inválido, usando 1 por defecto")
-
-        download_dir, count = asyncio.run(process_chapter(url_input, chap_num, base_chapters_dir))
+        # Determinar número inicial
+        start_num = 1
+        if len(links_to_download) == 1 and opcion != '2':
+             chap_num_str = input("Ingrese el número del capítulo (ej. 1): ").strip()
+             try:
+                 start_num = int(chap_num_str)
+             except:
+                 print("⚠️ Número inválido, usando 1 por defecto")
+                 start_num = 1
         
-        if download_dir and count > 0:
-             asyncio.run(manual_audit_and_upload(download_dir))
+        # Procesar descargas
+        total_caps = len(links_to_download)
+        for i, url in enumerate(links_to_download):
+            current_chap_num = start_num + i
+            print(f"\n⬇️  Procesando capítulo {i+1}/{total_caps} (Cap #{current_chap_num})")
+            
+            # Check Skip Download
+            if mass_options.get('skip_download'):
+                # Construct directory path manually
+                chapter_dir_name = str(current_chap_num).zfill(3)
+                download_dir = os.path.join(base_chapters_dir, chapter_dir_name)
+                
+                if os.path.exists(download_dir):
+                    print(f"⏩ Saltando descarga (Existe): {download_dir}")
+                    asyncio.run(process_post_download(download_dir, mass_options))
+                else:
+                    print(f"⚠️ Carpeta no existe, no se puede procesar: {download_dir}")
+                continue # Skip remaining loop actions
+
+            try:
+                download_dir, count = asyncio.run(process_chapter(url, current_chap_num, base_chapters_dir))
+                
+                if download_dir and count > 0:
+                     # Ejecutar pipeline post-descarga
+                     asyncio.run(process_post_download(download_dir, mass_options))
+                         
+            except Exception as e:
+                print(f"❌ Error procesando {url}: {e}")
+                
+        print("\n✨✨ Proceso Finalizado ✨✨")
         
     except ModuleNotFoundError as e:
         print(f"\n❌ ERROR CRÍTICO: {e}")

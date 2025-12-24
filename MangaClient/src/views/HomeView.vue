@@ -486,7 +486,8 @@ function isErotic(item) {
                   <div class="cards-grid">
                     <div v-for="item in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
-                          <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+                          <div class="thumbnail book">
+                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
                           <span class="book-type badge badge-manga">MANGA</span>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
@@ -523,7 +524,8 @@ function isErotic(item) {
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
-                        <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+                        <div class="thumbnail book">
+                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -537,7 +539,8 @@ function isErotic(item) {
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
-                        <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+                        <div class="thumbnail book">
+                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -551,7 +554,8 @@ function isErotic(item) {
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
-                        <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+                        <div class="thumbnail book">
+                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
                           <div class="type-bubble">{{ originLabel(item) }}<span class="age-18">+18</span></div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -576,7 +580,8 @@ function isErotic(item) {
                     : (isAuthenticated ? displayedTrending : displayedTrending.filter(i => !isErotic(i))))" 
                   :key="`tr-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.id}`" class="card-link">
-                    <div class="thumbnail book" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+                    <div class="thumbnail book">
+                      <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                       <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
                       <div class="type-bubble">{{ originLabel(item) }}<span v-if="isAuthenticated && isErotic(item)" class="age-18">+18</span></div>
                       <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -607,8 +612,6 @@ function isErotic(item) {
 .home-sidebar { min-width:0; position:sticky; top:90px; align-self:start; }
 
 .home-view .thumbnail.book {
-  background-size: cover;
-  background-position: center;
   aspect-ratio: 2 / 3;
   min-height: 220px;
   position: relative;
@@ -616,6 +619,13 @@ function isErotic(item) {
   overflow: hidden;
   color: #fff;
   display: block;
+}
+.home-view .thumbnail.book img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
 }
 .thumbnail .thumbnail-title.top-strip { position:absolute; top:0; left:0; right:0; background:rgba(0,0,0,0.65); padding:4px 6px; }
 .thumbnail .thumbnail-title.top-strip h4 { margin:0; font-size:14px; color:#fff; width:100%; line-height:1.15; }

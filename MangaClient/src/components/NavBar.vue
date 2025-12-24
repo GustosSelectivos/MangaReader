@@ -57,11 +57,9 @@ function submitSearch(e) {
 
         <!-- Desktop controls -->
         <template v-if="!isReaderRoute">
-        <!--
           <RouterLink to="/library" class="btn btn-secondary biblioteca-btn desktop-only" title="Biblioteca">
             Biblioteca
           </RouterLink>
-        -->
           <form class="search desktop-only" @submit="submitSearch">
             <input
               v-model="query"
@@ -101,7 +99,7 @@ function submitSearch(e) {
 
       <!-- Mobile dropdown menu -->
       <div v-if="isMenuOpen && !isReaderRoute" class="mobile-menu">
-        <!-- <RouterLink to="/library" class="btn btn-secondary w-100" @click="toggleMenu">Biblioteca</RouterLink> -->
+        <RouterLink to="/library" class="btn btn-secondary w-100" @click="toggleMenu">Biblioteca</RouterLink>
         <form class="mobile-search" @submit="(e) => { submitSearch(e); toggleMenu() }">
           <input
             v-model="query"
