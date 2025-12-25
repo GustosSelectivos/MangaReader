@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { toCdnUrl } from '@/utils/cdn'
 
 const props = defineProps({
   items: {
@@ -51,8 +52,15 @@ function resume() {
     <div class="carousel-track" ref="containerRef">
       <!-- Duplicate items for seamless loop -->
       <div v-for="(item, index) in [...items, ...items]" :key="index + '-' + item.id" class="carousel-card">
-         <a :href="`/library/manga/${item.id}`" class="card-link">
-            <div class="cover-image" :style="{ backgroundImage: `url(${item.displayCover || item.cover})` }">
+          <a :href="`/library/manga/${item.id}`" class="card-link">
+            <div class="cover-container">
+              <img 
+                :src="toCdnUrl(item.displayCover || item.cover, { w: 200, q: 80 })" 
+                :alt="item.title"
+                class="cover-image"
+                :loading="index === 0 ? 'eager' : 'lazy'"
+                :fetchpriority="index === 0 ? 'high' : 'auto'"
+              />
                <div class="hover-overlay">
                   <div class="info-content">
                      <div class="views-badge">
@@ -62,7 +70,7 @@ function resume() {
                   </div>
                </div>
             </div>
-         </a>
+          </a>
       </div>
     </div>
   </div>
@@ -116,12 +124,18 @@ function resume() {
     height: 100%;
 }
 
+.cover-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
 .cover-image {
   width: 100%;
   height: 100%;
-  background-size: cover;
-  background-position: center;
-  position: relative;
+  object-fit: cover;
+  display: block;
 }
 
 .hover-overlay {

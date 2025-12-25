@@ -6,6 +6,7 @@ import cache from '@/services/cache'
 import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
 import HomeBanner from '@/components/HomeBanner.vue'
 import MostViewedCarousel from '@/components/MostViewedCarousel.vue'
+import { toCdnUrl } from '@/utils/cdn'
 
 const populars = ref([])
 const trending = ref([])
@@ -487,7 +488,7 @@ function isErotic(item) {
                     <div v-for="(item, index) in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
                   <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                           <div class="thumbnail book">
-                          <img :src="item.displayCover || item.cover" :alt="item.title" 
+                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" 
                                :loading="index < 6 ? 'eager' : 'lazy'" 
                                :fetchpriority="index < 4 ? 'high' : 'auto'"
                                decoding="async" />
@@ -505,7 +506,7 @@ function isErotic(item) {
                     <h3 class="mb-3 h5">Hoy recomendamos...</h3>
                     <div class="recommendation-inner">
                       <div class="rec-cover">
-                        <a target="_blank" href="#"><img class="img-fluid" :src="populars[0] ? (populars[0].displayCover || populars[0].cover) : ''" :alt="populars[0]?.title || 'cover'" loading="eager" fetchpriority="high" /></a>
+                        <a target="_blank" href="#"><img class="img-fluid" :src="populars[0] ? toCdnUrl(populars[0].displayCover || populars[0].cover, { w: 400, q: 80 }) : ''" :alt="populars[0]?.title || 'cover'" loading="eager" fetchpriority="high" /></a>
                       </div>
                       <div class="rec-info">
                         <h4 class="text-truncate mb-2">{{ populars[0] ? populars[0].title : '' }}</h4>
@@ -528,7 +529,7 @@ function isErotic(item) {
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
-                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
+                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -543,7 +544,7 @@ function isErotic(item) {
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
-                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
+                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -558,7 +559,7 @@ function isErotic(item) {
                     <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
-                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
+                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}<span class="age-18">+18</span></div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>

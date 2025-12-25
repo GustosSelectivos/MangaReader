@@ -6,7 +6,7 @@
           <div class="col-12 col-md-4 text-center">
             <h4 class="book-type">{{ bookType }}</h4>
             <div class="element-image my-2">
-              <img class="book-thumbnail" :src="cover" alt="Portada del manga" loading="lazy" decoding="async" fetchpriority="high" />
+              <img class="book-thumbnail" :src="toCdnUrl(cover, { w: 400, q: 80 })" alt="Portada del manga" loading="lazy" decoding="async" fetchpriority="high" />
             </div>
           </div>
           <div class="col-12 col-md-8">
@@ -108,6 +108,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { toCdnUrl } from '@/utils/cdn'
 import { listChapters } from '@/services/chapterService'
 import { getManga, listMangaCovers } from '@/services/mangaService'
 import api from '@/services/api'

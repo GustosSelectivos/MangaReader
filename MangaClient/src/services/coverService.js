@@ -3,6 +3,7 @@
 // y deduplica solicitudes concurrentes.
 
 import api from './api'
+import { toCdnUrl } from '@/utils/cdn'
 
 const idPromises = new Map()
 const idResults = new Map()
@@ -15,9 +16,9 @@ async function fetchCoverByIdRaw(id) {
   try {
     const r = await api.get(`manga/manga-covers/${cid}/`)
     const obj = r?.data || {}
-    if (typeof obj.url_absoluta === 'string') return obj.url_absoluta
-    if (typeof obj.url_imagen === 'string') return obj.url_imagen
-  } catch (e) {}
+    if (typeof obj.url_absoluta === 'string') return toCdnUrl(obj.url_absoluta, { w: 400 })
+    if (typeof obj.url_imagen === 'string') return toCdnUrl(obj.url_imagen, { w: 400 })
+  } catch (e) { }
   return null
 }
 
@@ -30,9 +31,9 @@ async function fetchMainCoverForMangaRaw(mangaId) {
     const r1 = await api.get('manga/manga-covers/', { params: p1 })
     const list1 = Array.isArray(r1.data) ? r1.data : (r1.data?.results || [])
     const main = list1.find(c => c.tipo_cover === 'main') || list1[0]
-    if (main?.url_absoluta) return main.url_absoluta
-    if (main?.url_imagen) return main.url_imagen
-  } catch (e) {}
+    if (main?.url_absoluta) return toCdnUrl(main.url_absoluta, { w: 400 })
+    if (main?.url_imagen) return toCdnUrl(main.url_imagen, { w: 400 })
+  } catch (e) { }
   // Fallback: listado grande y filtrar por manga
   try {
     const pAll = { vigente: true, page_size: 1000 }
@@ -40,9 +41,9 @@ async function fetchMainCoverForMangaRaw(mangaId) {
     const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
     const forManga = listAll.filter(c => String(c.manga) === String(mid))
     const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
-    if (main2?.url_absoluta) return main2.url_absoluta
-    if (main2?.url_imagen) return main2.url_imagen
-  } catch (e) {}
+    if (main2?.url_absoluta) return toCdnUrl(main2.url_absoluta, { w: 400 })
+    if (main2?.url_imagen) return toCdnUrl(main2.url_imagen, { w: 400 })
+  } catch (e) { }
   return null
 }
 
@@ -86,8 +87,8 @@ export async function getMainCoversBatch(mangaIds) {
       const forManga = listAll.filter(c => String(c.manga) === String(mid))
       const main = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
       const url = main?.url_absoluta || main?.url_imagen || null
-      mainResults.set(mid, url)
-      result.set(mid, url)
+      mainResults.set(mid, toCdnUrl(url, { w: 400 }))
+      result.set(mid, toCdnUrl(url, { w: 400 }))
     }
   } catch (e) { /* ignore */ }
   return result
@@ -105,8 +106,8 @@ export async function getMainCoversParallel(mangaIds) {
       const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
       const main = list.find(c => c.tipo_cover === 'main') || list[0]
       const url = main?.url_absoluta || main?.url_imagen || null
-      if (url !== undefined) mainResults.set(mid, url)
-      return [mid, url]
+      if (url !== undefined) mainResults.set(mid, toCdnUrl(url, { w: 400 }))
+      return [mid, toCdnUrl(url, { w: 400 })]
     } catch (e) {
       return [mid, null]
     }
@@ -127,5 +128,5 @@ export async function resolveRemoteCover({ id, cover, cover_id, main_cover_id })
       if (viaManga) remote = viaManga
     }
   }
-  return (typeof remote === 'string' && remote.startsWith('http')) ? remote : null
+  return (typeof remote === 'string' && remote.startsWith('http')) ? toCdnUrl(remote, { w: 400 }) : null
 }
