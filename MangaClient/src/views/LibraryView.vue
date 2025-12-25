@@ -125,7 +125,8 @@
         <div v-else class="cards-grid">
           <div v-for="m in mangas" :key="m.id" class="card-item">
             <router-link :to="`/library/manga/${m.id}`" class="card-link">
-              <div class="thumbnail book" :style="{ backgroundImage: `url(${safeCover(m.cover)})` }">
+              <div class="thumbnail book">
+                <img :src="toCdnUrl(safeCover(m.cover), { w: 300, q: 80 })" :alt="m.title" loading="lazy" decoding="async" class="thumbnail-img" />
                 <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="m.title">{{ m.title }}</h4></div>
                 <div class="type-bubble">{{ originLabel(m) }}<span v-if="isAuthenticated && isErotic(m)" class="age-18">+18</span></div>
                 <div class="thumbnail-type-bar" :class="typeClass(m)" :style="{ '--type-bar-color': m.dem_color || undefined }">{{ displayType(m) }}</div>
@@ -151,6 +152,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
 import { listMangas } from '@/services/mangaService'
 import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
+import { toCdnUrl } from '@/utils/cdn'
 import { useMangaUI } from '@/composables/useMangaUI'
 
 export default {
@@ -512,7 +514,7 @@ export default {
       openSection, toggleSection, enforceGenreLimit,
       showStatus, reload, applySearch,
       // template helpers from composable
-      typeClass, displayType, originLabel, isErotic, safeCover,
+      typeClass, displayType, originLabel, isErotic, safeCover, toCdnUrl,
       // pagination
       page, pageSize, loadMore, showLoadMore, loadAll, activateLoadAll
     }

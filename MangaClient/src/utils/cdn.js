@@ -32,7 +32,6 @@ export function toCdnUrl(url, options = {}) {
             if (options.w) newUrl.searchParams.set('w', options.w);
             if (options.q) newUrl.searchParams.set('q', options.q);
 
-            console.log(`[CDN] Rewrote ${url} to ${newUrl.toString()}`);
             return newUrl.toString();
         }
     } catch (e) {
