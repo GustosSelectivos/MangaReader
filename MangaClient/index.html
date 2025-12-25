@@ -1,22 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0,shrink-to-fit=no">
-    <meta name="description" content="ZonaTMO - Tu lector de manga online favorito. Disfruta de miles de mangas, manhuas y manwhas gratis en alta calidad.">
-    <title>ZonaTMO</title>
-    <link rel="icon" href="/favicon.ico">
-    <!-- FontAwesome: bundled from node_modules via main.js import -->
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-    <!-- Preconnect to legacy domain to reduce DNS/TLS cost if referenced -->
-    <link rel="dns-prefetch" href="https://www.miswebtoons.uk">
-    <link rel="preconnect" href="https://www.miswebtoons.uk" crossorigin>
-    <!-- Preconnect/DNS Prefetch for image CDN (Backblaze) -->
-    <!-- TODO: Replace example domain with your actual Backblaze CDN domain -->
-    <link rel="preconnect" href="https://www.backblaze.com" crossorigin>
-    <link rel="dns-prefetch" href="https://www.backblaze.com">
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0,shrink-to-fit=no">
+  <meta name="description"
+    content="ZonaTMO - Tu lector de manga online favorito. Disfruta de miles de mangas, manhuas y manwhas gratis en alta calidad.">
+  <title>ZonaTMO</title>
+  <link rel="icon" href="/favicon.ico">
+  <!-- FontAwesome: Deferred loading via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'" />
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  </noscript>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+  <!-- Preconnect to legacy domain to reduce DNS/TLS cost if referenced -->
+  <link rel="dns-prefetch" href="https://www.miswebtoons.uk">
+  <link rel="preconnect" href="https://www.miswebtoons.uk" crossorigin>
+  <!-- Preconnect/DNS Prefetch for image CDN (Backblaze) -->
+  <!-- TODO: Replace example domain with your actual Backblaze CDN domain -->
+  <link rel="preconnect" href="https://www.backblaze.com" crossorigin>
+  <link rel="dns-prefetch" href="https://www.backblaze.com">
+</body>
+
 </html>
