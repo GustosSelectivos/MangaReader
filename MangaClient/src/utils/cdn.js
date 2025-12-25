@@ -17,8 +17,16 @@ export function toCdnUrl(url, options = {}) {
 
         // Check if it's a B2 URL
         if (B2_HOSTS.includes(urlObj.hostname)) {
-            // Replace host with CDN host
-            const newUrl = new URL(url.replace(urlObj.origin, CDN_HOST));
+            // Special handling for S3 endpoint to B2 Native transition:
+            // S3 URL: https://s3.../Bucket/file.jpg
+            // B2 Native: https://f005.../file/Bucket/file.jpg
+            // If origin is S3 and path starts with /MangaApi (likely bucket), we might need to prepend /file
+            let newPath = urlObj.pathname;
+            if (urlObj.hostname.includes('s3.') && !newPath.startsWith('/file/')) {
+                newPath = '/file' + newPath;
+            }
+
+            const newUrl = new URL(CDN_HOST + newPath);
 
             // Add options
             if (options.w) newUrl.searchParams.set('w', options.w);
