@@ -3,7 +3,13 @@ from ApiCore.Models.chapter_models import chapter
 
 
 class ChapterFilter(filters.FilterSet):
-    manga = filters.NumberFilter(field_name='manga__id')
+    manga = filters.CharFilter(method='filter_manga')
+
+    def filter_manga(self, queryset, name, value):
+        if str(value).isdigit():
+            return queryset.filter(manga__id=value)
+        return queryset.filter(manga__slug=value)
+
     capitulo_min = filters.NumberFilter(field_name='capitulo_numero', lookup_expr='gte')
     capitulo_max = filters.NumberFilter(field_name='capitulo_numero', lookup_expr='lte')
     titulo = filters.CharFilter(field_name='titulo', lookup_expr='icontains')

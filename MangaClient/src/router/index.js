@@ -1,13 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import LibraryView from '../views/LibraryView.vue'
-import ReaderView from '../views/ReaderView.vue'
-import ChapterView from '../views/ChapterView.vue'
-import LoginView from '../views/LoginView.vue'
-import UploadChapterView from '../views/UploadChapterView.vue'
-import MantenedoresAdminView from '../views/MantenedoresAdminView.vue'
-import MangasAdminView from '../views/MangasAdminView.vue'
-// MangaCreatorView removed; keep redirect route below
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,35 +6,35 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/library',
       name: 'library',
-      component: LibraryView,
+      component: () => import('../views/LibraryView.vue'),
     },
     {
-      path: '/reader/:mangaId',
+      path: '/reader/:slug',
       name: 'reader',
-      component: ReaderView,
+      component: () => import('../views/ReaderView.vue'),
       props: true,
     },
     // legacy/alternate route used in templates: keep for backwards compatibility
     {
-      path: '/library/manga/:mangaId',
+      path: '/library/manga/:slug',
       name: 'library-manga',
-      component: ReaderView,
-      props: route => ({ mangaId: route.params.mangaId }),
+      component: () => import('../views/ReaderView.vue'),
+      props: route => ({ slug: route.params.slug }),
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: () => import('../views/LoginView.vue'),
     },
     {
       path: '/chapter/:chapterId',
       name: 'chapter',
-      component: ChapterView,
+      component: () => import('../views/ChapterView.vue'),
       props: true,
     },
     // Legacy alias: redirect /uploads and /dev/uploads etc
@@ -63,17 +54,17 @@ const router = createRouter({
         {
           path: 'upload',
           name: 'admin-upload',
-          component: UploadChapterView,
+          component: () => import('../views/UploadChapterView.vue'),
         },
         {
           path: 'mantenedores',
           name: 'admin-mantenedores',
-          component: MantenedoresAdminView,
+          component: () => import('../views/MantenedoresAdminView.vue'),
         },
         {
           path: 'mangas',
           name: 'admin-mangas',
-          component: MangasAdminView,
+          component: () => import('../views/MangasAdminView.vue'),
         },
         {
           path: 'profiles',

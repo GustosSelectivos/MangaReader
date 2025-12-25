@@ -23,6 +23,20 @@ class MangaViewSet(viewsets.ModelViewSet):
     search_fields = ['titulo', 'sinopsis']
     ordering_fields = ['vistas', 'titulo', 'creado_en', 'actualizado_en']
 
+    def get_object(self):
+        # Allow lookup by slug OR id
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs.get(lookup_url_kwarg)
+
+        # Si el valor parece un entero, tratamos como ID (PK)
+        # Si no, asumimos que es un slug
+        if lookup_value and str(lookup_value).isdigit():
+             self.lookup_field = 'pk'
+        else:
+             self.lookup_field = 'slug'
+
+        return super().get_object()
+
     def get_queryset(self):
         qs = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
         

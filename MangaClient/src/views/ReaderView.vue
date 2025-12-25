@@ -115,10 +115,13 @@ import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 
 export default {
   name: 'ReaderView',
-  props: { mangaId: { type: [String, Number], required: false } },
+  props: { 
+    mangaId: { type: [String, Number], required: false },
+    slug: { type: String, required: false }
+  },
   setup(props) {
     const route = useRoute()
-    const mangaIdVal = computed(() => props.mangaId ?? route.params.mangaId)
+    const mangaIdVal = computed(() => props.slug ?? props.mangaId ?? route.params.slug ?? route.params.mangaId)
 
     const pages = ref([])
     const initialPage = ref(1)

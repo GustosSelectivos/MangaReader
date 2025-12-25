@@ -25,6 +25,18 @@ class manga(models.Model):
     vigente = models.BooleanField(default=True, null=False, db_column='MNG_VIGENTE')
     vistas = models.PositiveIntegerField(default=0, null=False, db_column='MNG_VISTA')
     erotico = models.BooleanField(default=False, null=False, db_column='MNG_EROTICO')
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True, db_column='MNG_SLUG')
+
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        if not self.slug:
+            self.slug = slugify(self.titulo)
+            # Handle potential duplicates (simple version)
+            # In a real app, you might check if slug exists and append a number
+            if manga.objects.filter(slug=self.slug).exists():
+                 import uuid
+                 self.slug += f"-{str(uuid.uuid4())[:8]}"
+        super().save(*args, **kwargs)
     
     class Meta:
         db_table = 'apicore_manga'

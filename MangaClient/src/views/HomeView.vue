@@ -485,7 +485,7 @@ function isErotic(item) {
                 <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <div v-for="(item, index) in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
-                      <a :href="`/library/manga/${item.id}`" class="card-link">
+                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                           <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" 
                                :loading="index < 6 ? 'eager' : 'lazy'" 
@@ -526,7 +526,7 @@ function isErotic(item) {
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
-                      <a :href="`/library/manga/${item.id}`" class="card-link">
+                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
@@ -541,7 +541,7 @@ function isErotic(item) {
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
-                      <a :href="`/library/manga/${item.id}`" class="card-link">
+                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
@@ -556,7 +556,7 @@ function isErotic(item) {
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
                     <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
-                      <a :href="`/library/manga/${item.id}`" class="card-link">
+                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
                           <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
