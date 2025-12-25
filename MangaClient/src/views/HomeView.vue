@@ -484,11 +484,14 @@ function isErotic(item) {
               <div class="tab-content" id="pills-tabContent" :key="popularTab">
                 <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
-                    <div v-for="item in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
+                    <div v-for="(item, index) in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                           <div class="thumbnail book">
-                          <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
+                          <img :src="item.displayCover || item.cover" :alt="item.title" 
+                               :loading="index < 6 ? 'eager' : 'lazy'" 
+                               :fetchpriority="index < 4 ? 'high' : 'auto'"
+                               decoding="async" />
+                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <span class="book-type badge badge-manga">MANGA</span>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
@@ -499,10 +502,10 @@ function isErotic(item) {
 
                   <!-- Recommendation block moved up below popular cards -->
                   <div class="recommendation-block mt-4" v-if="populars.length">
-                    <h5 class="mb-3">Hoy recomendamos...</h5>
+                    <h3 class="mb-3 h5">Hoy recomendamos...</h3>
                     <div class="recommendation-inner">
                       <div class="rec-cover">
-                        <a target="_blank" href="#"><img class="img-fluid" :src="populars[0] ? (populars[0].displayCover || populars[0].cover) : ''" :alt="populars[0]?.title || 'cover'"/></a>
+                        <a target="_blank" href="#"><img class="img-fluid" :src="populars[0] ? (populars[0].displayCover || populars[0].cover) : ''" :alt="populars[0]?.title || 'cover'" loading="eager" fetchpriority="high" /></a>
                       </div>
                       <div class="rec-info">
                         <h4 class="text-truncate mb-2">{{ populars[0] ? populars[0].title : '' }}</h4>
@@ -526,7 +529,7 @@ function isErotic(item) {
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
+                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
                         </div>
@@ -541,7 +544,7 @@ function isErotic(item) {
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
+                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}</div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
                         </div>
@@ -556,7 +559,7 @@ function isErotic(item) {
                       <a :href="`/library/manga/${item.id}`" class="card-link">
                         <div class="thumbnail book">
                           <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
+                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                           <div class="type-bubble">{{ originLabel(item) }}<span class="age-18">+18</span></div>
                           <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
                         </div>
@@ -575,14 +578,17 @@ function isErotic(item) {
 
 
               <div class="cards-grid cards-grid--trending">
-                <div v-for="item in (popularTab === 'erotico' 
+                <div v-for="(item, index) in (popularTab === 'erotico' 
                     ? displayedTrending.filter(i => isErotic(i)) 
                     : (isAuthenticated ? displayedTrending : displayedTrending.filter(i => !isErotic(i))))" 
                   :key="`tr-${item.id}`" class="card-item">
                   <a :href="`/library/manga/${item.id}`" class="card-link">
                     <div class="thumbnail book">
-                      <img :src="item.displayCover || item.cover" :alt="item.title" loading="lazy" decoding="async" />
-                      <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="item.title">{{ item.title }}</h4></div>
+                      <img :src="item.displayCover || item.cover" :alt="item.title" 
+                           :loading="index < 6 ? 'eager' : 'lazy'" 
+                           :fetchpriority="index < 4 ? 'high' : 'auto'"
+                           decoding="async" />
+                      <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
                       <div class="type-bubble">{{ originLabel(item) }}<span v-if="isAuthenticated && isErotic(item)" class="age-18">+18</span></div>
                       <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
                     </div>
@@ -630,8 +636,8 @@ function isErotic(item) {
   display: block;
   transition: transform 0.4s ease;
 }
-.thumbnail .thumbnail-title.top-strip { position:absolute; top:0; left:0; right:0; background:rgba(0,0,0,0.65); padding:4px 6px; }
-.thumbnail .thumbnail-title.top-strip h4 { margin:0; font-size:14px; color:#fff; width:100%; line-height:1.15; }
+.thumbnail .thumbnail-title.top-strip { position:absolute; top:0; left:0; right:0; background:rgba(0,0,0,0.8); padding:4px 6px; }
+.thumbnail .thumbnail-title.top-strip h3 { margin:0; font-size:14px; color:#fff; width:100%; line-height:1.15; }
 .home-view .nav { flex-wrap: wrap; gap: 8px; }
 .home-view .thumbnail.book { width: 100%; }
 /* Adaptive cards grid */
@@ -640,8 +646,8 @@ function isErotic(item) {
 .card-item { list-style:none; }
 .card-link { text-decoration:none; display:block; outline: none; border: none; }
 .card-link:hover, .card-link:focus { outline: none; border: none; }
-.book-type { position: absolute; right:8px; top:8px; background: rgba(0,0,0,0.65); padding:3px 6px; border-radius:4px; font-size:11px }
-.thumbnail-type-bar { position:absolute; left:0; right:0; bottom:0; padding:4px 6px 5px; font-size:12px; font-weight:600; letter-spacing:.3px; background:linear-gradient(90deg, var(--type-bar-color, rgba(0,0,0,0.65)) 0%, rgba(0,0,0,0.4) 100%); color:#fff; }
+.book-type { position: absolute; right:8px; top:8px; background: rgba(0,0,0,0.85); padding:3px 6px; border-radius:4px; font-size:11px }
+.thumbnail-type-bar { position:absolute; left:0; right:0; bottom:0; padding:4px 6px 5px; font-size:12px; font-weight:600; letter-spacing:.3px; background:linear-gradient(90deg, var(--type-bar-color, rgba(0,0,0,0.85)) 0%, rgba(0,0,0,0.6) 100%); color:#fff; }
 .type-manga { --type-bar-color:#1e88e5; }
 .type-manhwa { --type-bar-color:#43a047; }
 .type-manhua { --type-bar-color:#c62828; }
@@ -683,7 +689,7 @@ function isErotic(item) {
   /* On mobile, trending grid shows 2 columns */
   .cards-grid.cards-grid--trending { grid-template-columns: repeat(2, 1fr); }
   .cards-grid .thumbnail.book { aspect-ratio: 9 / 14; min-height: 170px; }
-  .cards-grid .thumbnail-title.top-strip h4 { font-size:12px; }
+  .cards-grid .thumbnail-title.top-strip h3 { font-size:12px; }
   .book-type { font-size:9px; padding:2px 4px; }
   .thumbnail-type-bar { font-size:10px; padding:3px 5px 4px; }
 }

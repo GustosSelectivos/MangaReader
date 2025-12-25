@@ -192,7 +192,7 @@ onMounted(() => {
     transform: translateY(-50%);
     z-index: 20;
     height: 100%;
-    padding: 0.5rem;
+    padding: 1.5rem; /* Increased for touch target */
     background: transparent;
     border: none;
     color: white; /* Default white */
@@ -231,7 +231,9 @@ onMounted(() => {
     background-color: rgba(255,255,255,0.5);
     transition: all 0.3s;
     cursor: pointer;
-    padding: 0;
+    padding: 6px; /* Touch area padding */
+    box-sizing: content-box; /* Ensure padding adds to size for hit area, but keep visual dot small */
+    background-clip: content-box; /* Background only inside content box */
 }
 .indicator-dot:hover { background-color: rgba(255,255,255,0.75); }
 .indicator-dot.active {
