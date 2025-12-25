@@ -359,7 +359,8 @@ export default {
       chapters, selectedChapter, selectedIndex, loading, error,
       selectChapter, openChapter, prevChapter, nextChapter, visibleChapters,
       showAllChapters, orderAsc, toggleOrder,
-      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms, bookType
+      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms, bookType,
+      toCdnUrl
     }
   }
 }
