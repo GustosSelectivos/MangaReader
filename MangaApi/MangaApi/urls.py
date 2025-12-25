@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from ApiCore.Router.mantenedor_router import router as mantenedor_router
@@ -42,4 +43,5 @@ urlpatterns = [
     path('api/auth/users/', UsersListView.as_view(), name='users_list'),
     path('api/auth/permissions/', CurrentUserPermissionsView.as_view(), name='current_user_permissions'),
     path('api/upload/sign/', B2UploadSignView.as_view(), name='upload_sign'),
+    path('robots.txt', TemplateView.as_view(template_name="robots.txt", content_type="text/plain")),
 ]
