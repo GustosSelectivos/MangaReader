@@ -70,7 +70,13 @@
 
         <div v-else-if="viewMode === 'cascade'" class="cascade-view">
           <div v-for="(p, i) in pages" :key="i" class="cascade-page" :ref="el => setCascadePageRef(el, i)">
-            <PageViewer :image="p" :fitMode="'contain'" :noMaxHeight="true" />
+            <!-- Windowed loading: Only pass URL if index is within the allowed limit -->
+            <PageViewer 
+              :image="i < cascadeLimit ? p : null" 
+              :fitMode="'contain'" 
+              :noMaxHeight="true" 
+              @load="onPageLoaded(i)"
+            />
           </div>
           <div class="cascade-controls-bar d-flex justify-content-between align-items-center mt-3" :class="{ 'flex-row-reverse': isRTL }">
             <div>
@@ -167,9 +173,24 @@ export default {
 
     const isRTL = computed(() => props.direction === 'rtl')
 
+    // Cascade Window Logic
+    const CASCADE_PRELOAD_SIZE = 5
+    const cascadeLimit = ref(CASCADE_PRELOAD_SIZE)
+
+    function onPageLoaded(index) {
+      // "Sequential with parallel buffer": 
+      // Ensure that for every loaded page 'i', we unlock up to 'i + 1 + buffer'
+      // effectively maintaining a sliding window ahead of the completed pages.
+      cascadeLimit.value = Math.max(cascadeLimit.value, index + 1 + CASCADE_PRELOAD_SIZE)
+    }
+
     watch(() => props.initialPage, (v) => { currentPage.value = v })
     watch(currentPage, () => preloadUpcoming())
-    watch(() => props.pages, () => { preloadUpcoming(); ensureOrientations() }, { deep: true })
+    watch(() => props.pages, () => { 
+      cascadeLimit.value = CASCADE_PRELOAD_SIZE // Reset window
+      preloadUpcoming(); 
+      ensureOrientations() 
+    }, { deep: true })
 
     onMounted(() => {
       // ... existing onMounted code ...
@@ -550,7 +571,7 @@ export default {
     watch(pairIndex, () => preloadLibreta())
     watch(pairedPages, () => preloadLibreta())
 
-    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass, onSinglePointer, onLibretaPointer, isRTL }
+    return { currentPage, fitMode, prevPage, nextPage, goToPage, currentChapter, goPrevChapter, goNextChapter, viewMode, setView, singlePageRef, viewerGap, toggleViewerGap, setCascadePageRef, prevPageCascade, nextPageCascade, pairedPages, currentPair, pairIndex, prevPair, nextPair, goToPair, getLibretaClass, libretaContainerClass, onSinglePointer, onLibretaPointer, isRTL, cascadeLimit, onPageLoaded }
   }
 }
 </script>

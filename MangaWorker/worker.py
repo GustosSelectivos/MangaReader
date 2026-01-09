@@ -227,9 +227,9 @@ def renumber_images(directory):
         
     print(f"✅ Renombrado completado: 001.webp - {len(files):03d}.webp")
 
-def optimize_images(directory, quality=80):
+def optimize_images(directory, quality=80, method=4):
     """Optimiza las imágenes en el directorio (convertir a WebP con calidad variable)"""
-    print(f"🔄 Optimizando imágenes en {directory} (WebP q={quality})...")
+    print(f"🔄 Optimizando imágenes en {directory} (WebP q={quality}, m={method})...")
     
     files = [f for f in os.listdir(directory) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
     if not files:
@@ -240,18 +240,23 @@ def optimize_images(directory, quality=80):
     for filename in files:
         filepath = os.path.join(directory, filename)
         try:
+            image_to_save = None
+            
+            # 1. Open and load data into memory
             with Image.open(filepath) as img:
-                # Force load data to ensure we can overwrite safely
                 img.load()
                 
-                # Convert to RGB if needed (e.g. RGBA or P)
+                # Convert or Copy to ensure we have a standalone object
                 if img.mode not in ("RGB", "L"):
-                    img = img.convert("RGB")
-                    
-                # Save overwriting the file
-                img.save(filepath, "WEBP", quality=quality, lossless=False)
+                    image_to_save = img.convert("RGB")
+                else:
+                    image_to_save = img.copy()
+            
+            # 2. Save overwriting the file (now that handle is closed)
+            if image_to_save:
+                image_to_save.save(filepath, "WEBP", quality=quality, method=method, lossless=False)
                 count += 1
-                # print(f"  ✨ Optimizado: {filename}", end='\r')
+                
         except Exception as e:
             print(f"  ❌ Error optimizando {filename}: {e}")
             
@@ -425,13 +430,23 @@ async def process_chapter(chapter_url, chapter_num, series_base_dir):
     os.makedirs(download_dir, exist_ok=True)
     print(f"📂 Guardando imágenes en: {os.path.abspath(download_dir)}")
 
-    # 3. Descarga Paralela
+    # 3. Descarga Paralela con Semáforo (Ventana deslizante)
+    # Define cuántas imágenes se descargan en paralelo (Pre-carga "Cascada")
+    MAX_CONCURRENT_DOWNLOADS = 5 
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
+
+    async def download_with_semaphore(url, idx):
+        async with semaphore:
+            return await download_image(session, url, idx, total_images, download_dir)
+
     async with aiohttp.ClientSession(headers=headers) as session:
         tasks = []
         for i, url in enumerate(image_urls):
-            task = download_image(session, url, i+1, total_images, download_dir)
+            # Envolver la llamada original con el semáforo
+            task = download_with_semaphore(url, i+1)
             tasks.append(task)
         
+        # asyncio.gather procesa en orden de lista, y el semáforo restringe la ejecución real
         await asyncio.gather(*tasks)
         print(f"✨ ¡Descarga completa! Revisa la carpeta '{download_dir}'")
         
@@ -474,24 +489,37 @@ async def process_post_download(download_dir, options):
     # 4.1b Optimización
     if options.get('optimize'):
         quality = options.get('quality', 80)
+        method = options.get('method', 4)
         
         if options.get('interactive'):
-            print(f"\n⚙️  Configuración de Optimización (Actual: WebP q={quality})")
+            print(f"\n⚙️  Configuración de Optimización (Actual: WebP q={quality}, m={method})")
             opt_confirm = input("👉 ¿Optimizar imágenes? [S/n]: ").strip().lower()
             if opt_confirm != 'n':
+                # Calidad
                 q_input = input(f"   Calidad (1-100) [{quality}]: ").strip()
                 if q_input:
                     try:
                         quality = int(q_input)
                     except:
                         pass
-                print(f"🔄 Optimizando imágenes en {download_dir} (WebP q={quality})...")
-                optimize_images(download_dir, quality=quality)
+                
+                # Method
+                m_input = input(f"   Método de Compresión (0-6) [{method}]: ").strip()
+                if m_input:
+                    try:
+                        val = int(m_input)
+                        if 0 <= val <= 6:
+                            method = val
+                    except:
+                        pass
+
+                print(f"🔄 Optimizando imágenes en {download_dir} (WebP q={quality}, m={method})...")
+                optimize_images(download_dir, quality=quality, method=method)
             else:
                  print("⏩ Saltando optimización.")
         else:
-             print(f"\n⚙️ Ejecutando optimización de imágenes (WebP q={quality})...")
-             optimize_images(download_dir, quality=quality)
+             print(f"\n⚙️ Ejecutando optimización de imágenes (WebP q={quality}, m={method})...")
+             optimize_images(download_dir, quality=quality, method=method)
 
     # 4.2 SUBIDA
     uploaded = False
@@ -534,6 +562,7 @@ def get_mass_options():
         'renumber': True,
         'optimize': True,
         'quality': 80,
+        'method': 4,
         'upload': False,
         'update_list': False,
         'series_url': None,
@@ -557,6 +586,12 @@ def get_mass_options():
         try:
             q = input("   Calidad (1-100) [80]: ").strip()
             if q: opts['quality'] = int(q)
+            
+            m = input("   Método de Compresión (0-6, default 4, 6=Best): ").strip()
+            if m:
+                val = int(m)
+                if 0 <= val <= 6:
+                    opts['method'] = val
         except:
             pass
             
@@ -634,7 +669,9 @@ if __name__ == "__main__":
                 'renumber': True, 
                 'optimize': True, 
                 'upload': True,
-                'quality': 80
+                'upload': True,
+                'quality': 80,
+                'method': 4
             }
 
         mode_input = input("\n¿Identificar serie por [T]ítulo o [C]ódigo? (T/c): ").strip().lower()
