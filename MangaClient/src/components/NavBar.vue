@@ -80,6 +80,7 @@ function submitSearch(e) {
               <span class="slider"></span>
             </label>
           </div>
+          <a href="https://dragcave.net/view/Msga2"><img src="https://dragcave.net/image/Msga2.gif" style="border-width:0" alt="Dragon Cave: Adopt one today!"/></a>
           <template v-if="!auth.isAuthenticated">
             <RouterLink to="/login" class="btn btn-primary login-btn">Login</RouterLink>
           </template>
