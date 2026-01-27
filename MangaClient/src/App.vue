@@ -4,7 +4,7 @@ import '@/assets/zonatmo.css';
 import NavBar from './components/NavBar.vue';
 </script>
 
-<template>
+<template>  
   <div class="app-root">
     <NavBar />
 
