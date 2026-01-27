@@ -194,16 +194,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #CORS_ALLOW_CREDENTIALS = True
 # Allow the Vite dev server origin during development
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
     "https://www.miswebtoons.uk",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
     "https://mangareader-production.up.railway.app",
     "https://manga-reader-bv4.pages.dev",
 ]
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
+
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.miswebtoons\.uk$",
