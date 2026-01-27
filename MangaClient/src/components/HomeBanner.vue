@@ -65,6 +65,8 @@ onMounted(() => {
                         :src="item.image" 
                         :alt="item.title" 
                         class="slide-img"
+                        :fetchpriority="index === 0 ? 'high' : 'auto'"
+                        :loading="index === 0 ? 'eager' : 'lazy'"
                     >
                      <div class="gradient-overlay-h"></div>
                      <div class="gradient-overlay-v"></div>
