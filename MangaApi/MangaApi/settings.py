@@ -249,3 +249,13 @@ CSRF_TRUSTED_ORIGINS = [
     "https://mangareader-production.up.railway.app",
     "https://manga-reader-bv4.pages.dev",
 ]
+
+# CDN Configuration
+USE_CDN = True
+CDN_DOMAIN = 'blackblaze.miswebtoons.uk' 
+B2_FRIENDLY_URL = 'f005.backblazeb2.com'
+
+def get_cdn_url(b2_path):
+    if USE_CDN:
+        return f"https://{CDN_DOMAIN}{b2_path}"
+    return f"https://{B2_FRIENDLY_URL}{b2_path}"
