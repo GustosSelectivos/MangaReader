@@ -52,7 +52,7 @@ def setup_groups_and_permissions():
     Llamar en management command o post_migrate signal
     """
     # Importar UserProfile para obtener el ContentType correcto donde se definen los permisos
-    from ApiCore.Models.user_models import UserProfile
+    from ApiCore.models import UserProfile
     
     # Obtener content type de UserProfile (donde definimos los permisos en Meta)
     # OJO: Los permisos se crean asociados al modelo donde se definen en Meta.

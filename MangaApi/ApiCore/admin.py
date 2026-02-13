@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from ApiCore.Models.user_models import UserProfile
+from ApiCore.models import UserProfile
 
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
