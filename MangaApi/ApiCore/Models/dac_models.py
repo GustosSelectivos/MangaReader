@@ -18,6 +18,7 @@ class Permission(models.Model):
 		return self.codename
 
 
+
 class AccessGrant(models.Model):
 	"""Grant a specific permission to a user or group over an object (generic)."""
 	# who: user OR group
