@@ -164,6 +164,7 @@ class MangaCardSerializer(DynamicFieldsModelSerializer):
     """
     demografia_display = serializers.CharField(source='demografia.descripcion', read_only=True)
     dem_color = serializers.CharField(source='demografia.color', read_only=True)
+    estado_display = serializers.CharField(source='estado.descripcion', read_only=True)
     cover_url = serializers.SerializerMethodField()
 
     def get_cover_url(self, obj):
