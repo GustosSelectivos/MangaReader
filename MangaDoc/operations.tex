@@ -1,0 +1,26 @@
+\section{Manual de Operaciones y Despliegue}
+
+\subsection{Ciclo de Vida del Software (SDLC)}
+El desarrollo sigue un flujo de CI/CD (Integración y Despliegue Continuo):
+1. \textbf{Desarrollo Local:} Feature branches. Tests locales con `manage.py check`.
+2. \textbf{Push a Main:} GitHub Actions o Webhooks disparan el build en Railway.
+3. \textbf{Build:} Se instalan dependencias (`pip install -r requirements.txt`).
+4. \textbf{Pre-Deploy:} Se ejecutan migraciones de base de datos (`manage.py migrate`).
+5. \textbf{Live:} El nuevo contenedor reemplaza al anterior sin tiempo de inactividad (Zero Downtime).
+
+\subsection{Monitorización y Alertas}
+\begin{itemize}
+    \item \textbf{Disponibilidad:} Endpoint `/api/health/` consultado por Cloudflare cada 60s.
+    \item \textbf{Errores:} Integración con Sentry. Notificación inmediata de excepciones 500/compatibilidad.
+    \item \textbf{Logs:} Accesibles vía CLI de Railway o Dashboard Web.
+\end{itemize}
+
+\subsection{Procedimientos de Recuperación (Disaster Recovery)}
+\subsubsection{Restauración de Servicio}
+En caso de fallo crítico en el despliegue:
+1. Acceder al Dashboard de Railway.
+2. Seleccionar el despliegue anterior ("Rollback").
+3. El sistema volverá a la versión estable en <30 segundos.
+
+\subsubsection{Backup de Datos}
+La base de datos MySQL en Railway tiene backups automáticos diarios con retención de 7 días.

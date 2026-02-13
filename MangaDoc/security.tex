@@ -1,0 +1,38 @@
+\section{Protocolos de Seguridad (ISO 27001 / 9001)}
+
+\subsection{Control de Acceso (RBAC)}
+El sistema implementa un control de acceso basado en roles estricto:
+
+\begin{enumerate}
+    \item \textbf{Anonimo:} Lectura básica. Rate Limit: 100/min.
+    \item \textbf{Registrado:} Lee capítulos. Rate Limit: 1000/min.
+    \item \textbf{Verificado (+18):} Acceso NSFW via \texttt{is\_nsfw\_allowed}.
+    \item \textbf{Staff:} Permisos de escritura y moderación.
+\end{enumerate}
+
+\subsection{Autenticación}
+Se utiliza el estándar **JWT (JSON Web Token)**.
+\begin{itemize}
+    \item \textbf{Access Token:} Vida útil de 60 minutos.
+    \item \textbf{Refresh Token:} Vida útil de 7 días. Rotación automática.
+\end{itemize}
+
+\subsection{Protección de Infraestructura}
+\subsubsection{Rate Limiting}
+Para mitigar ataques DDoS y scraping abusivo:
+\begin{lstlisting}[language=python, caption=Configuración de Throttling]
+'DEFAULT_THROTTLE_RATES': {
+    'anon': '100/min',
+    'user': '1000/min'
+}
+\end{lstlisting}
+
+\subsubsection{Cabeceras de Seguridad}
+Se fuerzan cabeceras HTTP para protección del cliente:
+\begin{itemize}
+    \item \texttt{SECURE\_BROWSER\_XSS\_FILTER}: Previene ataques XSS reflejados.
+    \item \texttt{SECURE\_CONTENT\_TYPE\_NOSNIFF}: Bloquea sniffing de MIME types.
+\end{itemize}
+
+\subsection{Auditoría}
+Todas las acciones administrativas y de acceso sensible se registran a través del middleware \texttt{DACAuditMiddleware}, almacenando IP, Usuario y Recurso accedido.

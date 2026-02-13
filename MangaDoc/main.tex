@@ -1,0 +1,129 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+}
+
+% Code Style
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstdefinelanguage{json}{
+    basicstyle=\normalfont\ttfamily,
+    numbers=left,
+    numberstyle=\scriptsize,
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    frame=lines,
+    backgroundcolor=\color{backcolour},
+    literate=
+     *{0}{{{\color{codepurple}0}}}{1}
+      {1}{{{\color{codepurple}1}}}{1}
+      {2}{{{\color{codepurple}2}}}{1}
+      {3}{{{\color{codepurple}3}}}{1}
+      {4}{{{\color{codepurple}4}}}{1}
+      {5}{{{\color{codepurple}5}}}{1}
+      {6}{{{\color{codepurple}6}}}{1}
+      {7}{{{\color{codepurple}7}}}{1}
+      {8}{{{\color{codepurple}8}}}{1}
+      {9}{{{\color{codepurple}9}}}{1}
+      {:}{{{\color{codegray}{:}}}}{1}
+      {,}{{{\color{codegray}{,}}}}{1}
+      {\{}{{{\color{codegreen}{\{}}}}{1}
+      {\}}{{{\color{codegreen}{\}}}}}{1}
+      {[}{{{\color{codegreen}{[}}}}{1}
+      {]}{{{\color{codegreen}{]}}}}{1},
+}
+
+\lstset{style=mystyle}
+
+\title{Documentación API MangaReader}
+\author{Equipo de Desarrollo}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Control de Documentos (ISO 9001)}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+    \hline
+    \textbf{Versión} & \textbf{Fecha} & \textbf{Autor} & \textbf{Descripción} \\
+    \hline
+    1.0 & \today & Equipo Dev & Versión Inicial del Sistema \\
+    \hline
+\end{tabular}
+\end{center}
+
+\tableofcontents
+\newpage
+
+\include{architecture}
+\include{database}
+\include{security}
+\include{operations}
+
+\section{Referencia API}
+Esta sección detalla los endpoints operativos para integración.
+
+\subsection{Autenticación}
+\begin{lstlisting}[language=bash]
+POST /api/token/
+\end{lstlisting}
+Body:
+\begin{lstlisting}[language=json]
+{
+    "username": "usuario",
+    "password": "password"
+}
+\end{lstlisting}
+
+\subsection{Mangas}
+\begin{lstlisting}[language=bash]
+GET /api/manga/mangas/?limit=20
+GET /api/manga/mangas/{id}/
+\end{lstlisting}
+
+\subsection{Monitorización}
+\begin{lstlisting}[language=bash]
+GET /api/health/
+\end{lstlisting}
+
+\end{document}

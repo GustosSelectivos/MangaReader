@@ -70,3 +70,17 @@ digital_serie.sql
 MangaScripts/
 MangaWorker/Chapters/
 modelo.png
+
+
+MangaDoc/main.aux
+MangaDoc/main.log
+MangaDoc/main.aux
+MangaDoc/main.synctex(busy)
+MangaDoc/main.synctex.gz
+MangaDoc/main.fdb_latexmk
+MangaDoc/main.out
+MangaDoc/main.fls
+MangaDoc/architecture.aux
+MangaDoc/database.aux
+MangaDoc/operations.aux
+MangaDoc/security.aux

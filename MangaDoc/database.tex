@@ -1,0 +1,37 @@
+\section{Base de Datos y Modelos}
+
+\subsection{Esquema Relacional}
+El sistema utiliza un esquema relacional normalizado para garantizar la integridad de los datos.
+
+\subsubsection{Modelo de Usuarios (\texttt{user\_models})}
+\begin{itemize}
+    \item \textbf{UserProfile}: Extensión 1-a-1 de \texttt{auth.User}. Almacena:
+    \begin{itemize}
+        \item \texttt{is\_nsfw\_allowed}: Booleano para control parental.
+        \item \texttt{reputation}: Sistema de karma/confianza.
+        \item \texttt{role}: Rol funcional (Lector, Moderador, Admin).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Modelo de Mangas (\texttt{manga\_models})}
+La entidad central \texttt{manga} se relaciona con:
+\begin{itemize}
+    \item \textbf{Estado:} FK a \texttt{estados} (En emisión, Finalizado).
+    \item \textbf{Demografía:} FK a \texttt{demografia} (Seinen, Shonen).
+    \item \textbf{Tags:} M2M a \texttt{tags} para categorización.
+    \item \textbf{Autores:} M2M a \texttt{autores}.
+\end{itemize}
+
+\subsubsection{Modelo de Estructura (\texttt{mantenedor\_models})}
+Tablas auxiliares para estandarización:
+\begin{itemize}
+    \item \texttt{demografia}: Clasificación de audiencia.
+    \item \texttt{estados}: Ciclo de vida del contenido.
+    \item \texttt{idioma}: Soporte multi-lenguaje.
+\end{itemize}
+
+\subsection{Políticas de Integridad}
+\begin{itemize}
+    \item \textbf{Foreign Keys:} Se utiliza \texttt{on\_delete=models.PROTECT} en catálogos maestros para evitar borrados accidentales de categorías en uso.
+    \item \textbf{Transacciones:} Escritura crítica usa \texttt{transaction.atomic}.
+\end{itemize}

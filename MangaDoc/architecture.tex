@@ -1,0 +1,30 @@
+\section{Arquitectura del Sistema}
+
+\subsection{Visión General}
+MangaReader es una plataforma de distribución de contenido digital (manga/manhwa) construida sobre una arquitectura monolítica modular con Django REST Framework. El sistema está diseñado para alta disponibilidad, escalabilidad horizontal y seguridad robusta.
+
+\subsection{Tecnologías Principales}
+\begin{itemize}
+    \item \textbf{Backend:} Python 3.13 + Django 5.2.
+    \item \textbf{API:} Django REST Framework (DRF) con JWT.
+    \item \textbf{Base de Datos:} MySQL (Producción), SQLite (Desarrollo).
+    \item \textbf{Infraestructura:} Railway (PaaS) con despliegue continuo desde GitHub.
+    \item \textbf{Monitorización:} Sentry (Errores), Cloudflare (Salud/DNS).
+\end{itemize}
+
+\subsection{Diagrama de Componentes}
+El sistema se divide en los siguientes módulos lógicos dentro de \texttt{ApiCore}:
+\begin{enumerate}
+    \item \textbf{Manga Core:} Gestión de títulos, sinopsis, estados (Modelos: \texttt{manga}, \texttt{manga\_cover}).
+    \item \textbf{Capítulos:} Gestión de contenido multimedia y volúmenes (Modelo: \texttt{chapter}).
+    \item \textbf{Usuarios y Seguridad:} Sistema RBAC (Role-Based Access Control) extendiendo \texttt{auth.User} con \texttt{UserProfile}.
+    \item \textbf{Mantenedores:} Tablas maestras para Tags, Autores, Demografías.
+    \item \textbf{DAC (Digital Access Control):} Auditoría y control de acceso granular.
+\end{enumerate}
+
+\subsection{Flujo de Datos}
+1. El cliente (Frontend/App) solicita un token JWT vía \texttt{/api/token/}.
+2. Las peticiones subsiguientes incluyen el header \texttt{Authorization: Bearer <token>}.
+3. El Middleware de Seguridad (\texttt{DACAuditMiddleware}) intercepta la petición para registro.
+4. El \texttt{MangaViewSet} evalúa los permisos (\texttt{CanViewNSFW}, \texttt{IsAuthenticated}).
+5. El Serializador (\texttt{MangaCardSerializer}) transforma los datos y optimiza la respuesta.

@@ -1,0 +1,29 @@
+\babel@toc {spanish}{}\relax 
+\contentsline {section}{\numberline {1}Arquitectura del Sistema}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Visión General}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Tecnologías Principales}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Diagrama de Componentes}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Flujo de Datos}{3}{subsection.1.4}%
+\contentsline {section}{\numberline {2}Base de Datos y Modelos}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Esquema Relacional}{4}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Modelo de Usuarios (\texttt {user\_models})}{4}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Modelo de Mangas (\texttt {manga\_models})}{4}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}Modelo de Estructura (\texttt {mantenedor\_models})}{4}{subsubsection.2.1.3}%
+\contentsline {subsection}{\numberline {2.2}Políticas de Integridad}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Protocolos de Seguridad (ISO 27001 / 9001)}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Control de Acceso (RBAC)}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Autenticación}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Protección de Infraestructura}{5}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}Rate Limiting}{5}{subsubsection.3.3.1}%
+\contentsline {subsubsection}{\numberline {3.3.2}Cabeceras de Seguridad}{5}{subsubsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.4}Auditoría}{5}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Manual de Operaciones y Despliegue}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Ciclo de Vida del Software (SDLC)}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Monitorización y Alertas}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Procedimientos de Recuperación (Disaster Recovery)}{6}{subsection.4.3}%
+\contentsline {subsubsection}{\numberline {4.3.1}Restauración de Servicio}{6}{subsubsection.4.3.1}%
+\contentsline {subsubsection}{\numberline {4.3.2}Backup de Datos}{6}{subsubsection.4.3.2}%
+\contentsline {section}{\numberline {5}Referencia API}{7}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Autenticación}{7}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Mangas}{7}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Monitorización}{7}{subsection.5.3}%

@@ -27,10 +27,12 @@ from ApiCore.View.stats_view import APIStatsView, APIStatsResetView
 from ApiCore.View.auth_view import CurrentUserView, UsersListView
 from ApiCore.View.auth_view import CurrentUserPermissionsView
 from ApiCore.View.b2_view import B2UploadSignView
+from ApiCore.View.health_view import HealthCheckView
 
 # Include each partial router so those files control their own endpoints
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health/', HealthCheckView.as_view(), name='health_check'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/stats/', APIStatsView.as_view(), name='api_stats'),
