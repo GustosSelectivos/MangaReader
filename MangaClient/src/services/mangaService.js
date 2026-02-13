@@ -2,18 +2,18 @@ import api from './api'
 import cache from './cache'
 
 export async function listMangas(params = {}) {
+  const key = cache.keyFrom('manga/mangas/', params)
+  const cached = cache.get(key)
+  if (cached) return Array.isArray(cached) ? cached : (cached?.results || [])
+
   try {
-    const key = cache.keyFrom('manga/mangas/', params)
-    const cached = cache.get(key)
-    if (cached) return Array.isArray(cached) ? cached : (cached?.results || [])
     const res = await api.get('manga/mangas/', { params })
     const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.mangas || [])
     if (Array.isArray(data)) cache.set(key, data, 5 * 60 * 1000)
     return data
-  } catch {
-    const res = await api.get('manga/mangas/', { params })
-    const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.mangas || [])
-    return data
+  } catch (e) {
+    console.error('Error fetching mangas:', e)
+    return []
   }
 }
 
@@ -21,12 +21,15 @@ export async function getManga(id) {
   const key = cache.keyFrom('manga/mangas/:id', { id })
   const cached = cache.get(key)
   if (cached) return cached
-  const candidates = [`manga/mangas/${id}/`, `mangas/${id}/`, `manga/${id}/`]
-  for (const ep of candidates) {
-    try {
-      const r = await api.get(ep)
-      if (r?.data) { cache.set(key, r.data, 60 * 1000); return r.data }
-    } catch { /* try next */ }
+
+  try {
+    const r = await api.get(`manga/mangas/${id}/`)
+    if (r?.data) {
+      cache.set(key, r.data, 60 * 1000)
+      return r.data
+    }
+  } catch (e) {
+    console.error(`Error fetching manga ${id}:`, e)
   }
   return null
 }

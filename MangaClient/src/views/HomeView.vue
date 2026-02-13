@@ -166,21 +166,22 @@ async function tryApis() {
  
  async function loadData() {
   try {
-    // Parallel fetching for initial tabs
-    // We only fetch small chunks (limit=10/12) instead of 100+ items
-    const [rPopular, rTrending, rLatest, rMostViewed] = await Promise.all([
-       api.get('manga/mangas/', { params: { limit: 12, ordering: '-vistas' } }), // Popular (All)
-       api.get('manga/mangas/', { params: { limit: 8, ordering: '-creado_en' } }), // Trending (mock logic, using new)
-       api.get('manga/mangas/', { params: { limit: 8, ordering: '-actualizado_en' } }), // Latest
-       api.get('manga/mangas/', { params: { limit: 30, ordering: '-vistas' } })  // Most Viewed Sidebar (fetched more to allow filtering)
+    // Single Request Optimization using new HomeViewSet
+    const res = await api.get('manga/home/')
+    const data = res?.data || {}
+
+    // Process all lists in parallel
+    const [pProps, tProps, lProps, mProps] = await Promise.all([
+      processItems(normalizeData(data.populars)),
+      processItems(normalizeData(data.trending)),
+      processItems(normalizeData(data.latest)),
+      processItems(normalizeData(data.most_viewed))
     ])
 
-    // Process data to map covers, demography, etc.
-    // Process data to map covers, demography, etc.
-    populars.value = await processItems(normalizeData(rPopular?.data))
-    trending.value = await processItems(normalizeData(rTrending?.data))
-    latest.value = await processItems(normalizeData(rLatest?.data))
-    mostViewed.value = await processItems(normalizeData(rMostViewed?.data))
+    populars.value = pProps
+    trending.value = tProps
+    latest.value = lProps
+    mostViewed.value = mProps
 
     // Initialize displayed lists
     displayedTrending.value = trending.value

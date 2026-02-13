@@ -34,16 +34,9 @@ async function fetchMainCoverForMangaRaw(mangaId) {
     if (main?.url_absoluta) return toCdnUrl(main.url_absoluta, { w: 400 })
     if (main?.url_imagen) return toCdnUrl(main.url_imagen, { w: 400 })
   } catch (e) { }
-  // Fallback: listado grande y filtrar por manga
-  try {
-    const pAll = { vigente: true, page_size: 1000 }
-    const rAll = await api.get('manga/manga-covers/', { params: pAll })
-    const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
-    const forManga = listAll.filter(c => String(c.manga) === String(mid))
-    const main2 = forManga.find(c => c.tipo_cover === 'main') || forManga[0]
-    if (main2?.url_absoluta) return toCdnUrl(main2.url_absoluta, { w: 400 })
-    if (main2?.url_imagen) return toCdnUrl(main2.url_imagen, { w: 400 })
-  } catch (e) { }
+  // Previously had a fallback fetching 1000 items here. Removed for performance.
+  // The Backend serialization now provides 'cover_url', so extensive fallback search is unnecessary.
+
   return null
 }
 
