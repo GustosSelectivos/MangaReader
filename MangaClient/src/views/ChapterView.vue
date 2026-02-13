@@ -112,7 +112,34 @@ async function load() {
         }
       }
     }
-  } catch (err) {
+// --- Prefetch Logic ---
+        // Load next chapter data silently after a short delay
+        if (chaptersList.value.length) {
+           setTimeout(() => {
+             const idx = chaptersList.value.findIndex(c => String(c.id) === String(props.chapterId))
+             if (idx >= 0 && idx < chaptersList.value.length - 1) {
+               const nextCh = chaptersList.value[idx + 1]
+               console.log(`Prefetching next chapter: ${nextCh.id}`)
+               // Prefetch JSON
+               getChapter(nextCh.id).then(data => {
+                  if (data) {
+                    // Optional: Prefetch first 3 images if we really want speed
+                    const imgs = Array.isArray(data.pages) ? data.pages : (data.pages && Array.isArray(data.pages.images) ? data.pages.images : [])
+                    if (imgs && imgs.length) {
+                      const preloadCount = Math.min(imgs.length, 3)
+                      for (let i=0; i<preloadCount; i++) {
+                         const link = document.createElement('link')
+                         link.rel = 'prefetch'
+                         link.href = imgs[i]
+                         document.head.appendChild(link)
+                      }
+                    }
+                  }
+               }).catch(()=>{})
+             }
+           }, 3000) // Wait 3s so current page renders first
+        }
+    } catch (err) {
     console.error('Failed to load chapter', err)
   } finally {
     loading.value = false

@@ -6,6 +6,7 @@ import cache from '@/services/cache'
 import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
 import HomeBanner from '@/components/HomeBanner.vue'
 import MostViewedCarousel from '@/components/MostViewedCarousel.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import { toCdnUrl } from '@/utils/cdn'
 
 const populars = ref([])
@@ -433,15 +434,16 @@ function isErotic(item) {
 
 <template>
   <div class="home-view pb-5">
-    <div v-if="loading" class="loading-container">
-      <img src="/assets/load.gif" alt="Cargando..." class="loading-icon" />
-      <p>Cargando contenido...</p>
+    <div v-if="loading" class="cards-grid">
+       <div v-for="n in 12" :key="n" class="card-item">
+         <SkeletonCard />
+       </div>
     </div>
     <div v-else-if="!populars.length && !displayedTrending.length && !latest.length && !mostViewed.length" class="empty-container">
-      <div class="text-center py-5">
-        <h3 class="mb-2">No hay contenido disponible</h3>
-        <p class="text-muted">Intenta recargar o verificar la conexión con el servidor.</p>
-      </div>
+       <div class="text-center py-5">
+         <h3 class="mb-2">No hay contenido disponible</h3>
+         <p class="text-muted">Intenta recargar o verificar la conexión con el servidor.</p>
+       </div>
     </div>
 
     <div class="home-layout" v-else>
