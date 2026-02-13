@@ -18,8 +18,9 @@ class HomeViewSet(viewsets.ViewSet):
     # Cache por 5 minutos dado que la home cambia poco
     @method_decorator(cache_page(60 * 5))
     def list(self, request):
-        # Base query optimizada
-        qs = manga.objects.filter(vigente=True).select_related('estado', 'demografia').prefetch_related(
+        # Base query optimizada y filtrada para contenido SFW por defecto
+        # Para ver contenido NSFW, el usuario debe usar los tabs específicos o la librería
+        qs = manga.objects.filter(vigente=True, erotico=False).select_related('estado', 'demografia').prefetch_related(
             Prefetch('covers', queryset=manga_cover.objects.filter(vigente=True))
         )
 

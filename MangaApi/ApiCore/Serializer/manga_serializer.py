@@ -194,6 +194,6 @@ class MangaCardSerializer(DynamicFieldsModelSerializer):
         model = manga
         fields = [
             'id', 'slug', 'titulo', 'tipo_serie', 'cover_url', 
-            'demografia', 'demografia_display', 'dem_color', 'estado_display', 'vistas'
+            'demografia', 'demografia_display', 'dem_color', 'estado_display', 'vistas', 'erotico'
         ]
 
