@@ -13,15 +13,24 @@ from ApiCore.Filter.manga_filters import MangaFilter, MangaCoverFilter
 from ApiCore.access_control import DRFDACPermission
 
 
+from ApiCore.permissions.checkers import CanViewNSFW, IsModeratorOrAdmin
+
 class MangaViewSet(viewsets.ModelViewSet):
     # queryset = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
     serializer_class = MangaSerializer
     # Use DAC permission: read allowed to all, writes require DAC 'write' on the object
-    permission_classes = [DRFDACPermission]
+    # Also integrate Profile permissions
+    permission_classes = [DRFDACPermission, CanViewNSFW]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_class = MangaFilter
     search_fields = ['titulo', 'sinopsis']
     ordering_fields = ['vistas', 'titulo', 'creado_en', 'actualizado_en']
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'random']:
+             from ApiCore.Serializer.manga_serializer import MangaCardSerializer
+             return MangaCardSerializer
+        return MangaSerializer
 
     def get_object(self):
         # Allow lookup by slug OR id
@@ -40,8 +49,13 @@ class MangaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = manga.objects.all().select_related('demografia', 'estado', 'autor').prefetch_related('covers', 'tags__tag')
         
-        # Restricción de contenido +18 para usuarios anónimos
-        if not self.request.user.is_authenticated:
+        # Check NSFW access via Profile
+        # logic: if user is not authenticated OR (auth and no profile) OR (auth+profile but no nsfw perm) -> hide erotic
+        can_see_nsfw = False
+        if self.request.user.is_authenticated and hasattr(self.request.user, 'userprofile'):
+             can_see_nsfw = self.request.user.userprofile.can_view_nsfw
+        
+        if not can_see_nsfw:
             qs = qs.filter(erotico=False)
             
         return qs
@@ -68,16 +82,67 @@ class MangaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='random')
     def random(self, request):
-        """Return 5 random items, potentially filtering by user context (e.g. strict mode)."""
+        """Return 5 random items efficiently using ID-based selection."""
         qs = self.get_queryset()
-        # If user is not authenticated, exclude erotic content by default? 
-        # For now, following user request: "5 series al azar dependiendo de si estas logueado o no"
+        # If user is not authenticated, exclude erotic content
         if not request.user.is_authenticated:
             qs = qs.filter(erotico=False)
+            
+        import random
+        from django.db.models import Max
+
+        # Optimization: Avoid order_by('?') which is O(N)
+        # Strategy: Get Max ID -> Generate Random IDs -> Fetch
         
-        # Random ordering using database function (efficient for small tables, careful for huge ones)
-        # For SQLite/Postgres '?' works. 
-        random_items = qs.order_by('?')[:5]
+        count = qs.count()
+        if count == 0:
+            return Response([])
+            
+        # For small datasets, random.sample is fine and better distributed
+        if count < 1000:
+            items = list(qs)
+            if len(items) > 5:
+                items = random.sample(items, 5)
+            serializer = self.get_serializer(items, many=True)
+            return Response(serializer.data)
+
+        # For large datasets, use ID-based probing
+        max_id = qs.aggregate(max_id=Max("id"))['max_id']
+        if not max_id:
+             return Response([])
+
+        random_items = []
+        visited_ids = set()
+        required_count = 5
+        attempts = 0
+        max_attempts = 20 # Circuit breaker to prevent infinite loops
+        
+        while len(random_items) < required_count and attempts < max_attempts:
+            pk = random.randint(1, max_id)
+            if pk in visited_ids:
+                attempts += 1
+                continue
+            visited_ids.add(pk)
+            
+            # Find the first item with ID >= pk (handling gaps)
+            # Important: Apply the same filters (qs) to ensure we don't return restricted content
+            obj = qs.filter(id__gte=pk).order_by('id').first()
+            
+            if obj:
+                # Avoid duplicates in the result set
+                if obj.id not in [x.id for x in random_items]:
+                    random_items.append(obj)
+            
+            attempts += 1
+            
+        # If we didn't get enough (e.g. extremely sparse IDs or strict filters), simple fallback
+        if len(random_items) < required_count:
+            exclude_ids = [x.id for x in random_items]
+            # Grab a few more to fill the gap
+            needed = required_count - len(random_items)
+            extras = list(qs.exclude(id__in=exclude_ids)[:needed])
+            random_items.extend(extras)
+
         serializer = self.get_serializer(random_items, many=True)
         return Response(serializer.data)
 

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ApiCore.Models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
 from ApiCore.Models.mantenedor_models import autores, estados, demografia, tags
+from ApiCore.utils.serializers import DynamicFieldsModelSerializer
 
 
 class MangaAltTituloSerializer(serializers.ModelSerializer):
@@ -50,7 +51,7 @@ class MangaTagSerializer(serializers.ModelSerializer):
 		fields = ['id', 'manga', 'manga_titulo', 'tag', 'tag_descripcion', 'vigente']
 
 
-class MangaSerializer(serializers.ModelSerializer):
+class MangaSerializer(DynamicFieldsModelSerializer):
 	estado_display = serializers.CharField(source='estado.descripcion', read_only=True)
 	demografia_display = serializers.CharField(source='demografia.descripcion', read_only=True)
 	dem_color = serializers.CharField(source='demografia.color', read_only=True)
@@ -154,4 +155,44 @@ class MangaSerializer(serializers.ModelSerializer):
 			'autor', 'autor_display', 'fecha_lanzamiento', 'creado_en', 'actualizado_en', 'vigente', 'vistas', 'codigo', 'tipo_serie',
 			'erotico', 'tags', 'cover_image'
 		]
+
+class MangaCardSerializer(DynamicFieldsModelSerializer):
+    """
+    Serializer lighter for Lists/Grids (Home, Library).
+    Excludes: tags, synopsis, authors, dates.
+    Includes: id, slug, title, type, cover, demography.
+    """
+    demografia_display = serializers.CharField(source='demografia.descripcion', read_only=True)
+    dem_color = serializers.CharField(source='demografia.color', read_only=True)
+    cover_url = serializers.SerializerMethodField()
+
+    def get_cover_url(self, obj):
+        try:
+            # We assume prefetch is active, but if not, fail gracefully
+            covers = list(obj.covers.all())
+            main = next((c for c in covers if c.vigente and c.tipo_cover == 'main'), None)
+            if not main:
+                main = next((c for c in covers if c.vigente), None)
+
+            if main:
+                url = getattr(main, 'url_imagen', None)
+                if isinstance(url, str) and (url.startswith('http://') or url.startswith('https://')):
+                    return url
+                request = self.context.get('request') if hasattr(self, 'context') else None
+                if request and isinstance(url, str):
+                    try:
+                        return request.build_absolute_uri(url)
+                    except Exception:
+                        return url
+                return url
+        except Exception:
+            pass
+        return None
+
+    class Meta:
+        model = manga
+        fields = [
+            'id', 'slug', 'titulo', 'tipo_serie', 'cover_url', 
+            'demografia', 'demografia_display', 'dem_color', 'estado_display', 'vistas'
+        ]
 
