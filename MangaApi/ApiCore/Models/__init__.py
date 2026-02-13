@@ -1,4 +1,1 @@
-ÿþfrom
-.user_models
-import
-UserProfile
+ÿþ
