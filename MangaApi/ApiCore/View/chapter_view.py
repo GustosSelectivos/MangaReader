@@ -6,7 +6,7 @@ import os
 from rest_framework.permissions import AllowAny
 from ApiCore.access_control import DRFDACPermission
 from django_filters.rest_framework import DjangoFilterBackend
-from ApiCore.Models.chapter_models import chapter
+from ApiCore.models.chapter_models import chapter
 from ApiCore.Serializer.chapter_serializer import ChapterSerializer
 from ApiCore.Filter.chapter_filters import ChapterFilter
 
@@ -40,7 +40,7 @@ class ChapterViewSet(viewsets.ModelViewSet):
                 
             # Get Manga Title
             try:
-                from ApiCore.Models.manga_models import manga
+                from ApiCore.models.manga_models import manga
                 m_obj = manga.objects.get(id=manga_id)
                 series_title = m_obj.titulo
             except Exception as e:

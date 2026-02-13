@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from ApiCore.Models.chapter_models import chapter
+from ApiCore.models.chapter_models import chapter
 
 
 class ChapterFilter(filters.FilterSet):

@@ -2,7 +2,7 @@ from rest_framework import viewsets, filters as drf_filters
 from rest_framework.permissions import AllowAny
 from ApiCore.access_control import DRFDACPermission
 from django_filters.rest_framework import DjangoFilterBackend
-from ApiCore.Models.mantenedor_models import autores, estados, demografia, tags
+from ApiCore.models.mantenedor_models import autores, estados, demografia, tags
 from ApiCore.Serializer.mantenedor_serializer import (
     AutorSerializer, EstadoSerializer, DemografiaSerializer, TagSerializer
 )

@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, User
 from ApiCore.Serializer.dac_serializer import GroupSerializer, AccessGrantSerializer
 from ApiCore.access_control import grant_group_permission, create_profile
 from ApiCore.models import AccessGrant, Permission
-from ApiCore.Models import manga_models, chapter_models
+from ApiCore.models import manga_models, chapter_models
 from django.contrib.contenttypes.models import ContentType
 
 

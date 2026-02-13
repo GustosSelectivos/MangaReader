@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from ApiCore.Models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
-from ApiCore.Models.mantenedor_models import autores, estados, demografia, tags
+from ApiCore.models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
+from ApiCore.models.mantenedor_models import autores, estados, demografia, tags
 from ApiCore.utils.serializers import DynamicFieldsModelSerializer
 
 

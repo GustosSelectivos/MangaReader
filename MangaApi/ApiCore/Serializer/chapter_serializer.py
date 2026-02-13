@@ -1,7 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
-from ApiCore.Models.chapter_models import chapter
-from ApiCore.Models.manga_models import manga
+from ApiCore.models.chapter_models import chapter
+from ApiCore.models.manga_models import manga
 
 
 class ChapterSerializer(serializers.ModelSerializer):

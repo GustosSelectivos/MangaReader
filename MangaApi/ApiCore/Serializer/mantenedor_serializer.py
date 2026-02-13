@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ApiCore.Models.mantenedor_models import autores, estados, demografia, tags
+from ApiCore.models.mantenedor_models import autores, estados, demografia, tags
 
 
 class AutorSerializer(serializers.ModelSerializer):

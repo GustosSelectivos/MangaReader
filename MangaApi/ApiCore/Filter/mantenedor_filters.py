@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from ApiCore.Models.mantenedor_models import autores
+from ApiCore.models.mantenedor_models import autores
 
 
 class MantenedorFilter(filters.FilterSet):

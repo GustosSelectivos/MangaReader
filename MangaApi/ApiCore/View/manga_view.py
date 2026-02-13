@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny
 from ApiCore.access_control import DRFDACPermission
 from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
-from ApiCore.Models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
+from ApiCore.models.manga_models import manga, manga_alt_titulo, manga_cover, manga_autor, manga_tag
 from ApiCore.Serializer.manga_serializer import (
     MangaSerializer, MangaAltTituloSerializer, MangaCoverSerializer, MangaAutorSerializer, MangaTagSerializer
 )

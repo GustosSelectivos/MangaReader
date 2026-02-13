@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from ApiCore.Models.manga_models import manga, manga_cover
+from ApiCore.models.manga_models import manga, manga_cover
 
 
 class MangaFilter(filters.FilterSet):
