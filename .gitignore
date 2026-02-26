@@ -71,7 +71,6 @@ MangaScripts/
 MangaWorker/Chapters/
 modelo.png
 
-
 MangaDoc/main.aux
 MangaDoc/main.log
 MangaDoc/main.aux
@@ -84,3 +83,10 @@ MangaDoc/architecture.aux
 MangaDoc/database.aux
 MangaDoc/operations.aux
 MangaDoc/security.aux
+
+architecture_review.md
+Promps.md
+tree.txt
+vue3-vite-best-practices.md
+django-rest-framework-best-practices.md
+log.txt

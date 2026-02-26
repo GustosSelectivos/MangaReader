@@ -63,54 +63,73 @@ class B2Service:
 
     def upload_cover(self, serie_code, file_obj, filename):
         """
-        Uploads a file object to covers/{serie_code}/{filename}
+        Uploads a cover and returns a normalized URL to the Cloudflare worker
         """
         try:
             key = f'covers/{serie_code}/{filename}'
-            # file_obj is a Django UploadedFile, so we can read it
+            
             self.s3.upload_fileobj(
                 file_obj,
                 self.bucket_name,
                 key,
                 ExtraArgs={'ContentType': file_obj.content_type}
             )
-            # Return public URL (assuming it's public or we construct it)
-            # Standard B2 s3 endpoint URL structure:
-            # https://{bucketName}.s3.{region}.backblazeb2.com/{key}
-            # Or if custom domain is used. For now let's try to construct a reliable URL.
-            # Using the endpoint from init might be generic (s3.us-east-005...), verify if we need exact file URL.
-            # Usually: https://f005.backblazeb2.com/file/{bucketName}/{key}
-            # But let's check what we have.
-            # Safe bet: return the Key, and let frontend/serializer handle full URL or use a standard base.
-            # However, existing code seems to store full URL or relative?
-            # looking at serializer get_url_absoluta, it handles strings starting with http.
-            # Let's try to return a full URL if possible.
             
-            # Helper to construct typical friendly URL if possible
-            friendly_host = self.endpoint.replace('s3.', '').replace('.backblazeb2.com', '.backblazeb2.com/file/' + self.bucket_name)
-            # Actuall B2 friendly URL is slightly different usually. 
-            # e.g. https://f005.backblazeb2.com/file/MangaApi/cover/...
-            # Let's just return the relative B2 key for now if we don't have a sure domain, 
-            # OR better: construct the s3 URL which is reliable.
-            
-            # Actually, let's just use the key. The serializer expects 'url_imagen' char field.
-            # If we look at existing data: "https://f005.backblazeb2.com/file/MangaApi/..."
-            
-            # Let's assume a standard public URL format for B2
-            # We can grab it from env or hardcode the prefix if we know it.
-            # For now, let's try to deduce it or just return the S3 URI.
-            
-            # Let's assume standard friendly URL logic:
-            public_base = os.getenv('B2_PUBLIC_URL', '').rstrip('/')
-            if not public_base:
-                # Fallback to direct file download from generic s3 endpoint if nothing else (might not work for web display)
-                # But typically B2 gives you a specific naming like f005.
-                # Let's try to return the full key path and let the view/serializer assume a prefix if needed?
-                # No, we want to save a working URL.
-                return f"{self.endpoint}/{self.bucket_name}/{key}" 
-            
-            return f"{public_base}/{key}"
+            # WORKER para covers (resize dinámico)
+            return f"https://img.miswebtoons.uk/file/MangaApi/{key}"
 
         except Exception as e:
             print(f"Error uploading cover: {e}")
             return None
+
+    def upload_chapter_page(self, serie_code, chapter_num, file_obj, filename):
+        """
+        Uploads a chapter page -> devuelve URL del WORKER (blackblaze.miswebtoons.uk)
+        """
+        try:
+            key = f'chapters/{serie_code}/{chapter_num}/{filename}'
+            
+            self.s3.upload_fileobj(
+                file_obj,
+                self.bucket_name,
+                key,
+                ExtraArgs={'ContentType': file_obj.content_type}
+            )
+            
+            # WORKER para chapters (cache + compresión)
+            return f"https://blackblaze.miswebtoons.uk/file/MangaApi/{key}"
+
+        except Exception as e:
+            print(f"Error uploading chapter: {e}")
+            return None
+
+    @staticmethod
+    def normalize_image_url(url):
+        """
+        Converts any Backblaze URL format to worker URL, detecting cover vs chapter
+        """
+        if not url:
+            return None
+        
+        if 'img.miswebtoons.uk' in url or 'blackblaze.miswebtoons.uk' in url:
+            return url
+            
+        path = None
+        if '/file/MangaApi/' in url:
+            path = url.split('/file/MangaApi/')[1]
+        elif '/MangaApi/' in url:
+            path = url.split('/MangaApi/')[1]
+            
+        if not path:
+            return url
+            
+        # Detecta si es cover o chapter
+        if path.startswith('covers/'):
+            # COVER -> img.miswebtoons.uk
+            return f"https://img.miswebtoons.uk/file/MangaApi/{path}"
+        elif path.startswith('chapters/'):
+            # CHAPTER -> blackblaze.miswebtoons.uk
+            return f"https://blackblaze.miswebtoons.uk/file/MangaApi/{path}"
+            
+        return url
+

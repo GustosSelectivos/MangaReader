@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000/api")
-# Adjust CDN/B2 host to match the requested format
-B2_HOST = "https://f005.backblazeb2.com/file/MangaApi"
+# Adjust CDN/B2 host to use the Cloudflare worker for chapters
+B2_HOST = "https://blackblaze.miswebtoons.uk/file/MangaApi"
 
 def get_token():
     """Autenticación para obtener token JWT"""

@@ -60,6 +60,8 @@ class MangaSerializer(DynamicFieldsModelSerializer):
 	def get_cover_url(self, obj):
 		# Priorizar cover principal vigente usando la lista ya cargada (prefetch)
 		try:
+			from ApiCore.services.b2_service import B2Service
+			
 			# obj.covers.all() ya está en memoria gracias al prefetch_related
 			covers = list(obj.covers.all())
 			# Filtramos en Python en lugar de SQL
@@ -70,16 +72,8 @@ class MangaSerializer(DynamicFieldsModelSerializer):
 
 			if main:
 				url = getattr(main, 'url_imagen', None)
-				if isinstance(url, str) and (url.startswith('http://') or url.startswith('https://')):
-					return url
-				# Construir absoluta si es relativa
-				request = self.context.get('request') if hasattr(self, 'context') else None
-				if request and isinstance(url, str):
-					try:
-						return request.build_absolute_uri(url)
-					except Exception:
-						return url
-				return url
+				if isinstance(url, str):
+					return B2Service.normalize_image_url(url)
 		except Exception:
 			pass
 		return None
