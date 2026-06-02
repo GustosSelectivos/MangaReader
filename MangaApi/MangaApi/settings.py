@@ -195,6 +195,12 @@ REST_FRAMEWORK = {
         'anon': '100/min',
         'user': '1000/min'
     },
+
+    # Paginación global: evita cargar toda la tabla en memoria.
+    # Respuesta: { "pagination": { count, pages, page, page_size, next, previous }, "results": [...] }
+    # Override por vista: pagination_class = None  (p.ej. /random/)
+    'DEFAULT_PAGINATION_CLASS': 'MangaApi.pagination.StandardResultsPagination',
+    'PAGE_SIZE': 24,
 }
 
 # Simple JWT settings (use env vars in production)

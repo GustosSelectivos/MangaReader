@@ -82,65 +82,17 @@ class MangaSerializer(DynamicFieldsModelSerializer):
 	cover_image = serializers.ImageField(write_only=True, required=False)
 
 	def create(self, validated_data):
-		cover_file = validated_data.pop('cover_image', None)
-		instance = super().create(validated_data)
-		
-		# Proceso de subida de cover
-		if cover_file and instance.codigo:
-			try:
-				from ApiCore.services.b2_service import B2Service
-				service = B2Service()
-				# Nombre archivo original o generar uno
-				filename = cover_file.name
-				# Normalizar nombre simple
-				import re
-				filename = re.sub(r'[^a-zA-Z0-9._-]', '', filename)
-				
-				# Subir a carpeta covers/{codigo}/...
-				url = service.upload_cover(instance.codigo, cover_file, filename)
-				
-				if url:
-					# Crear registro manga_cover
-					manga_cover.objects.create(
-						manga=instance,
-						url_imagen=url,
-						tipo_cover='main',
-						vigente=True
-					)
-			except Exception as e:
-				print(f"Error uploading cover on create: {e}")
-				
-		return instance
+		# El serializer NO hace I/O de red.
+		# El archivo ya fue extraído por la view antes de llamar a save();
+		# aquí simplemente lo descartamos del validated_data para que el ORM no lo procese.
+		validated_data.pop('cover_image', None)
+		return super().create(validated_data)
 
 	def update(self, instance, validated_data):
-		cover_file = validated_data.pop('cover_image', None)
-		instance = super().update(instance, validated_data)
-		
-		if cover_file and instance.codigo:
-			try:
-				from ApiCore.services.b2_service import B2Service
-				service = B2Service()
-				filename = cover_file.name
-				import re
-				filename = re.sub(r'[^a-zA-Z0-9._-]', '', filename)
-				
-				# Subir a carpeta covers/{codigo}/...
-				url = service.upload_cover(instance.codigo, cover_file, filename)
-				
-				if url:
-					# Inactivar covers principales anteriores para evitar duplicados visuales
-					manga_cover.objects.filter(manga=instance, tipo_cover='main', vigente=True).update(vigente=False)
-
-					# Crear registro manga_cover (el serializer base ya guarda los cambios del manga)
-					manga_cover.objects.create(
-						manga=instance,
-						url_imagen=url,
-						tipo_cover='main',
-						vigente=True
-					)
-			except Exception as e:
-				print(f"Error uploading cover on update: {e}")
-		return instance
+		# Igual que create(): descartar el campo de archivo.
+		# La subida real es responsabilidad de CoverUploadService (llamado desde la view).
+		validated_data.pop('cover_image', None)
+		return super().update(instance, validated_data)
 
 	class Meta:
 		model = manga

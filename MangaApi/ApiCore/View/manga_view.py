@@ -61,14 +61,58 @@ class MangaViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        """
+        1. Guarda el manga (serializer ya no toca B2).
+        2. Inicializa carpetas en B2 si hay código.
+        3. Si viene cover_image, delega la subida a CoverUploadService.
+        """
+        from ApiCore.services.cover_service import CoverUploadService, CoverUploadError
+
+        cover_file = self.request.FILES.get('cover_image')
         instance = serializer.save()
-        # Initialize B2 folders if code is present
+
+        # Inicializar estructura de carpetas en B2
         if instance.codigo:
             try:
                 from ApiCore.services.b2_service import B2Service
                 B2Service().initialize_manga_folders(instance.codigo)
             except Exception as e:
-                print(f"Failed to init folders for {instance.codigo}: {e}")
+                # No crítico: las carpetas son solo marcadores virtuales
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Failed to init B2 folders for %s: %s", instance.codigo, e
+                )
+
+        # Subida de cover (si vino en el request)
+        if cover_file and instance.codigo:
+            try:
+                CoverUploadService().attach_cover(instance, cover_file)
+            except CoverUploadError as exc:
+                # El manga ya fue creado; no revertimos, pero registramos el error.
+                import logging
+                logging.getLogger(__name__).error(
+                    "Cover upload failed after creating manga %s: %s", instance.codigo, exc
+                )
+
+    def perform_update(self, serializer):
+        """
+        1. Guarda los cambios del manga.
+        2. Si viene cover_image, delega la subida a CoverUploadService
+           (que también desactiva las covers previas automáticamente).
+        """
+        from ApiCore.services.cover_service import CoverUploadService, CoverUploadError
+
+        cover_file = self.request.FILES.get('cover_image')
+        instance = serializer.save()
+
+        if cover_file and instance.codigo:
+            try:
+                CoverUploadService().attach_cover(instance, cover_file)
+            except CoverUploadError as exc:
+                import logging
+                logging.getLogger(__name__).error(
+                    "Cover upload failed during update of manga %s: %s", instance.codigo, exc
+                )
 
     @action(detail=True, methods=['post'], url_path='increment-view', permission_classes=[AllowAny])
     def increment_view(self, request, pk=None):
@@ -80,7 +124,7 @@ class MangaViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({ 'detail': str(e) }, status=400)
 
-    @action(detail=False, methods=['get'], url_path='random')
+    @action(detail=False, methods=['get'], url_path='random', pagination_class=None)
     def random(self, request):
         """Return 5 random items efficiently using ID-based selection."""
         qs = self.get_queryset()
