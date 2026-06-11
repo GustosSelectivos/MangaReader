@@ -27,15 +27,16 @@ from core.config import settings
 def _build_engine():
     kwargs: dict = {
         "echo": settings.DEBUG,
-        "pool_pre_ping": True,   # Valida conexión antes de usarla (evita OperationalError)
     }
     # En producción sin estado (Railway/Heroku): NullPool evita fugas
+    # y como las conexiones no se reusan, no necesitamos pool_pre_ping.
     if settings.ENVIRONMENT == "production":
         kwargs["poolclass"] = NullPool
     else:
         kwargs["pool_size"] = 10
         kwargs["max_overflow"] = 20
         kwargs["pool_recycle"] = 3600  # Reciclar conexiones cada hora
+        kwargs["pool_pre_ping"] = False  # Desactivado localmente para evitar bug de aiomysql 0.2.0
 
     return create_async_engine(settings.database_url, **kwargs)
 
