@@ -30,6 +30,11 @@ from core.exceptions import register_exception_handlers
 from middlewares.counter import APICallCounterMiddleware
 from middlewares.audit import DACAuditMiddleware
 from middlewares.request_logger import RequestLoggerMiddleware
+from middlewares.security import SecurityHeadersMiddleware
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from core.limiter import limiter
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -91,12 +96,16 @@ app = FastAPI(
 
 # ── Exception Handlers ────────────────────────────────────────────────────────
 register_exception_handlers(app)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # ── Middlewares ───────────────────────────────────────────────────────────────
 # Orden de capas (de afuera hacia adentro):
 
 
+# 1. Security Headers (debe ir antes del ruteo para inyectar en toda respuesta)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # 2. GZip (equivale a django.middleware.gzip.GZipMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)

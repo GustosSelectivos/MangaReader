@@ -16,9 +16,10 @@ el hash de Django directamente usando passlib.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.concurrency import run_in_threadpool
 
 from core.database import get_db
 from core.security import (
@@ -27,7 +28,9 @@ from core.security import (
     get_current_user,
     get_optional_user,
     require_staff,
+    pwd_context
 )
+from core.limiter import limiter
 from .dependencies import get_auth_service, get_user_service
 from .services import AuthService, UserService
 from . import repository as repo
@@ -50,7 +53,9 @@ router = APIRouter(prefix="/auth", tags=["Auth & Users"])
 # ── Login (reemplaza simplejwt TokenObtainPairView) ───────────────────────────
 
 @router.post("/token", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -68,6 +73,26 @@ async def refresh_token(
 ):
     """Refresca el access token usando el refresh token."""
     return await auth_service.refresh_token(payload.refresh)
+
+
+from core.security import token_blacklist
+import time
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Revoca el token actual guardando su 'jti' en una Blacklist en memoria.
+    """
+    jti = current_user.get("jti")
+    exp = current_user.get("exp")
+    
+    if not jti or not exp:
+        return {"msg": "Token inválido para revocación"}
+
+    # Guardar en diccionario en memoria
+    token_blacklist[jti] = exp
+            
+    return {"msg": "Sesión cerrada correctamente"}
 
 
 # ── Me (GET /auth/me) ─────────────────────────────────────────────────────────

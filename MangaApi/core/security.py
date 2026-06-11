@@ -15,6 +15,7 @@ Decisión de diseño:
 
 from datetime import datetime, timezone
 from typing import Any
+import uuid
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -25,6 +26,9 @@ from passlib.context import CryptContext
 
 from core.config import settings
 from core.database import get_db
+
+# Blacklist in-memory: { "jti": timestamp_expiracion }
+token_blacklist: dict[str, float] = {}
 
 # Esquema de seguridad para Swagger UI (Bearer token)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -39,7 +43,7 @@ def create_access_token(data: dict) -> str:
     """Crea un JWT de acceso con expiración."""
     payload = data.copy()
     expire = datetime.now(timezone.utc) + settings.access_token_expire
-    payload.update({"exp": expire, "type": "access"})
+    payload.update({"exp": expire, "type": "access", "jti": uuid.uuid4().hex})
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -47,7 +51,7 @@ def create_refresh_token(data: dict) -> str:
     """Crea un JWT de refresco con expiración más larga."""
     payload = data.copy()
     expire = datetime.now(timezone.utc) + settings.refresh_token_expire
-    payload.update({"exp": expire, "type": "refresh"})
+    payload.update({"exp": expire, "type": "refresh", "jti": uuid.uuid4().hex})
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -87,7 +91,23 @@ async def get_current_user(
             detail="No se proporcionó token de autenticación.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return _decode_token(credentials.credentials)
+    payload = _decode_token(credentials.credentials)
+    
+    # Verificar Blacklist in-memory
+    jti = payload.get("jti")
+    if jti and jti in token_blacklist:
+        # Opcional: limpieza básica (lazy)
+        import time
+        if time.time() > token_blacklist[jti]:
+            del token_blacklist[jti]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="El token ha sido revocado (sesión cerrada).",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+    return payload
 
 
 async def get_optional_user(

@@ -38,28 +38,14 @@ class APICallCounterMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self._redis = None
-        self._redis_available = False
 
     async def _get_redis(self):
-        """Lazy-init del cliente Redis."""
-        if self._redis is not None:
-            return self._redis
+        """No usamos Redis en este proyecto, retorna None para usar el fallback."""
+        return None
 
-        if not settings.REDIS_ENABLED:
-            return None
-
-        try:
-            import redis.asyncio as aioredis
-            client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-            await client.ping()
-            self._redis = client
-            self._redis_available = True
-            logger.info("Redis conectado exitosamente para counter middleware.")
-        except Exception as exc:
-            logger.warning("Redis no disponible, usando fallback en memoria: %s", exc)
-            self._redis_available = False
-        return self._redis
+    @property
+    def _redis_available(self) -> bool:
+        return False
 
     async def dispatch(self, request: Request, call_next) -> Response:
         start_time = time.monotonic()
