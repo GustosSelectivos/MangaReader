@@ -10,7 +10,7 @@ const loading = ref(true)
 // Fetch data from backend
 async function fetchRandom() {
   try {
-    const res = await api.get('manga/mangas/random/')
+    const res = await api.get('mangas/random')
     let raw = res.data
     // Normalize if array is wrapped
     if (raw && !Array.isArray(raw) && raw.results) raw = raw.results

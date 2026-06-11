@@ -2,6 +2,6 @@ import api from './api'
 
 export default {
   getCurrent() {
-    return api.get('auth/user/')
+    return api.get('auth/me')
   }
 }

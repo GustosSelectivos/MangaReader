@@ -73,7 +73,7 @@ function setTrendingFilter(e) { trendingFilter.value = e.target ? e.target.value
 
 // Try a list of API endpoints (relative). No mocks or local fallbacks.
 const apiCandidates = [
-  'manga/mangas/',
+  'mangas',
 ]
 
 function normalizeData(raw) {
@@ -168,7 +168,7 @@ async function tryApis() {
  async function loadData() {
   try {
     // Single Request Optimization using new HomeViewSet
-    const res = await api.get('manga/home/')
+    const res = await api.get('home')
     const data = res?.data || {}
 
     // Process all lists in parallel
@@ -217,7 +217,7 @@ async function fetchSpecificTab(type) {
         params.demografia = demografiaIds.value[type]
     }
 
-    const res = await api.get('manga/mangas/', { params })
+    const res = await api.get('mangas', { params })
     const data = await processItems(normalizeData(res?.data))
     trendingCache.value[type] = data
   } catch (e) {}
@@ -226,9 +226,9 @@ async function fetchSpecificTab(type) {
 async function fetchDemografiaIds() {
   try {
     const p = { page_size: 100 }
-    const k = cache.keyFrom('mantenedor/demografias/', p)
+    const k = cache.keyFrom('catalog/demografias', p)
     const c = cache.get(k)
-    const r = c ? { data: c } : await api.get('mantenedor/demografias/', { params: p })
+    const r = c ? { data: c } : await api.get('catalog/demografias', { params: p })
     const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
     cache.set(k, list, 24 * 60 * 60 * 1000)
     for (const d of list) {
@@ -252,9 +252,9 @@ async function preloadDemografias() {
   if (demografiasLoaded) return
   try {
     const p = { page_size: 1000 }
-    const k = cache.keyFrom('mantenedor/demografias/', p)
+    const k = cache.keyFrom('catalog/demografias', p)
     const c = cache.get(k)
-    const r = c ? { data: c } : await api.get('mantenedor/demografias/', { params: p })
+    const r = c ? { data: c } : await api.get('catalog/demografias', { params: p })
     const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
     cache.set(k, list, 24 * 60 * 60 * 1000)
     for (const d of list) {
@@ -286,12 +286,12 @@ async function resolveDemografiaDescripcion(idOrName) {
   }
   // Fallback: petición directa por ID; si es texto, se intentará listado
   try {
-    const r = await api.get(`mantenedor/demografias/${idOrName}/`)
+    const r = await api.get(`catalog/demografias/${idOrName}`)
     const d = r?.data || {}
     return { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
   } catch (e) {}
   try {
-    const rl = await api.get('mantenedor/demografias/', { params: { page_size: 1000 } })
+    const rl = await api.get('catalog/demografias', { params: { page_size: 1000 } })
     const list = Array.isArray(rl.data) ? rl.data : (rl.data?.results || [])
     const found = list.find(x => String(x.id) === String(idOrName) || String((x.descripcion || x.name || x.title || '')).toLowerCase() === String(idOrName).toLowerCase()) || {}
     return { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
