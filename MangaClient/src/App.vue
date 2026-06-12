@@ -1,7 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router';
 import '@/assets/zonatmo.css';
-import NavBar from './components/NavBar.vue';
+import NavBar from './core/components/NavBar.vue';
 </script>
 
 <template>  

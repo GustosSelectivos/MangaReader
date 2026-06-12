@@ -38,8 +38,14 @@ api.interceptors.response.use(
     // Reintentar una vez sin Authorization si 401 en GET (Mantenido de la V1)
     if (status === 401 && config && !config.__retried401 && String(config.method).toLowerCase() === 'get') {
       config.__retried401 = true
-      try { delete config.headers?.Authorization } catch (e) { }
-      try { localStorage.removeItem('auth_token') } catch (e) { }
+      try { delete config.headers?.Authorization } catch { }
+      
+      import('@/features/Auth/stores/authStore').then(({ useAuthStore }) => {
+        try { useAuthStore().logout() } catch { localStorage.removeItem('auth_token') }
+      }).catch(() => {
+        localStorage.removeItem('auth_token')
+      })
+
       return api.request(config)
     }
     return Promise.reject(error)

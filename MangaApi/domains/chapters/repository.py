@@ -17,14 +17,17 @@ async def get_chapters(
     db: AsyncSession,
     page: int = 1,
     page_size: int = 24,
-    manga_id: int | None = None,
+    manga_param: str | None = None,
     search: str | None = None,
     ordering: str = "capitulo_numero",
 ) -> tuple[list[Chapter], int]:
     q = select(Chapter).options(selectinload(Chapter.manga))
 
-    if manga_id:
-        q = q.where(Chapter.manga_id == manga_id)
+    if manga_param:
+        if manga_param.isdigit():
+            q = q.where(Chapter.manga_id == int(manga_param))
+        else:
+            q = q.join(Manga).where(Manga.slug == manga_param)
     if search:
         q = q.where(Chapter.titulo.ilike(f"%{search}%"))
 

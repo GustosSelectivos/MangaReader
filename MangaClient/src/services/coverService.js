@@ -61,7 +61,7 @@ export async function getMainCoversParallel(mangaIds) {
 }
 
 // Utilidad: decide una portada remota
-export async function resolveRemoteCover({ id, cover, cover_id, main_cover_id }) {
+export async function resolveRemoteCover({ id, cover }) {
   let remote = cover
   if (!remote || typeof remote !== 'string' || !remote.startsWith('http')) {
     // cover_id y main_cover_id ya no aplican en FastAPI, usamos el ID del manga

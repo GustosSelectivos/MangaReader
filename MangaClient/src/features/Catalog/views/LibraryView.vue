@@ -123,16 +123,7 @@
         </div>
 
         <div v-else class="cards-grid">
-          <div v-for="m in mangas" :key="m.id" class="card-item">
-            <router-link :to="`/library/manga/${m.id}`" class="card-link">
-              <div class="thumbnail book">
-                <img :src="toCdnUrl(safeCover(m.cover), { w: 300, q: 80 })" :alt="m.title" loading="lazy" decoding="async" class="thumbnail-img" />
-                <div class="thumbnail-title top-strip"><h4 class="text-truncate" :title="m.title">{{ m.title }}</h4></div>
-                <div class="type-bubble">{{ originLabel(m) }}<span v-if="isAuthenticated && isErotic(m)" class="age-18">+18</span></div>
-                <div class="thumbnail-type-bar" :class="typeClass(m)" :style="{ '--type-bar-color': m.dem_color || undefined }">{{ displayType(m) }}</div>
-              </div>
-            </router-link>
-          </div>
+          <MangaCard v-for="m in mangas" :key="m.id" :item="m" :showEroticLabel="isAuthenticated" />
         </div>
 
         <div class="pagination-row" v-if="mangas.length">
@@ -148,10 +139,11 @@
 
 <script>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/features/Auth/stores/authStore'
+import MangaCard from '@/features/Catalog/components/MangaCard.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listMangas } from '@/services/mangaService'
-import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
+
 import { toCdnUrl } from '@/utils/cdn'
 import { useMangaUI } from '@/composables/useMangaUI'
 
@@ -408,33 +400,6 @@ export default {
         tags: raw.tags || []
       }
     }
-
-    // Build a generic srcset; if no variants exist, duplicate src as fallback
-    function buildSrcset(src) {
-      if (!src || typeof src !== 'string') return ''
-      // If your CDN provides variants, replace with actual variant URLs
-      // e.g., `${base}?w=320 320w, ${base}?w=640 640w, ...`
-      return `${src} 320w, ${src} 640w, ${src} 960w, ${src} 1280w`
-    }
-    const thumbnailSizes = '(max-width: 576px) 33vw, (max-width: 960px) 25vw, 200px'
-    function indexFetchPriority(m) {
-      // prioridad alta para primeras 6 portadas visibles; resto auto
-      // Nota: el v-for no da índice aquí; podrías usar key/orden si fuese necesario
-      return 'auto'
-    }
-
-    function resolveCover(raw) {
-      const c = raw.cover || raw.image || raw.portada || ''
-      if (typeof c === 'string' && c.startsWith('http')) return c
-      if (c) return `/assets/covers/${c}`
-      return '/assets/demo/cover2.jpg'
-    }
-
-    function demoSeed() {
-      // No demo/mocks: always return empty when no data
-      return []
-    }
-
     function reload() {
       clearTimeout(debounceTimer)
       page.value = 1
@@ -518,6 +483,9 @@ export default {
       // pagination
       page, pageSize, loadMore, showLoadMore, loadAll, activateLoadAll
     }
+  },
+  components: {
+    MangaCard
   }
 }
 </script>

@@ -110,7 +110,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toCdnUrl } from '@/utils/cdn'
 import { listChapters } from '@/services/chapterService'
-import { getManga, listMangaCovers } from '@/services/mangaService'
+import { getManga } from '@/services/mangaService'
 import api from '@/services/api'
 import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 
@@ -148,44 +148,7 @@ export default {
 
     const pageSizeDemo = ['/assets/demo/page1.jpg', '/assets/demo/page2.jpg']
 
-    // Cover helpers available for both DEV and PROD
-    async function fetchCoverById(apiClient, possibleId) {
-      const cid = Number(possibleId)
-      if (!cid || Number.isNaN(cid)) return null
-      try {
-        const r = await apiClient.get(`manga/manga-covers/${cid}/`)
-        const obj = r?.data || {}
-        return typeof obj.url_imagen === 'string' ? obj.url_imagen : null
-      } catch (e) { return null }
-    }
-    async function fetchCoverForManga(apiClient, mid) {
-      if (!mid && mid !== 0) return null
-      try {
-        const r1 = await apiClient.get('manga/manga-covers/', { params: { manga: mid, vigente: true } })
-        const list1 = Array.isArray(r1.data) ? r1.data : (r1.data?.results || [])
-        const candidates = list1.filter(c => String(c.manga) === String(mid) && typeof c.url_imagen === 'string')
-        if (candidates.length) {
-          const pick = candidates[Math.floor(Math.random() * candidates.length)]
-          return pick.url_imagen
-        }
-      } catch (e) {}
-      try {
-        const rAll = await apiClient.get('manga/manga-covers/', { params: { page_size: 1000, vigente: true } })
-        const listAll = Array.isArray(rAll.data) ? rAll.data : (rAll.data?.results || [])
-        const forManga = listAll.filter(c => String(c.manga) === String(mid) && typeof c.url_imagen === 'string')
-        if (forManga.length) {
-          const pick2 = forManga[Math.floor(Math.random() * forManga.length)]
-          return pick2.url_imagen
-        }
-      } catch (e) {}
-      return null
-    }
-
     // Caches locales para deduplicar requests de covers (por ID y por manga)
-    const _readerCoverIdPromises = new Map()
-    const _readerCoverIdResults = new Map()
-    const _readerMainCoverPromises = new Map()
-    const _readerMainCoverResults = new Map()
 
     function getCoverByIdCachedClient(apiClient, id) {
       const cid = Number(id)

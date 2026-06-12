@@ -47,14 +47,14 @@ def _to_detail(chapter) -> ChapterDetail:
 async def list_chapters(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=24, ge=1, le=1000),
-    manga: int | None = Query(default=None),
+    manga: str | None = Query(default=None),
     search: str | None = Query(default=None),
     ordering: str = Query(default="capitulo_numero"),
     service: ChapterService = Depends(get_chapter_service),
 ):
     items, total = await service.list_chapters(
         page=page, page_size=page_size,
-        manga_id=manga, search=search, ordering=ordering
+        manga_param=manga, search=search, ordering=ordering
     )
     return paginate([_to_detail(c) for c in items], total, page, page_size)
 

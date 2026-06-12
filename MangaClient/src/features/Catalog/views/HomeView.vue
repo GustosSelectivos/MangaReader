@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/features/Auth/stores/authStore'
 import api from '@/services/api'
-import cache from '@/services/cache'
-import { getMainCoverCached, getMainCoversBatch, getMainCoversParallel } from '@/services/coverService'
-import HomeBanner from '@/components/HomeBanner.vue'
-import MostViewedCarousel from '@/components/MostViewedCarousel.vue'
-import SkeletonCard from '@/components/SkeletonCard.vue'
+import { useQueryClient } from '@tanstack/vue-query'
+import HomeBanner from '@/features/Catalog/components/HomeBanner.vue'
+import MostViewedCarousel from '@/features/Catalog/components/MostViewedCarousel.vue'
+import SkeletonCard from '@/core/components/SkeletonCard.vue'
+import MangaCard from '@/features/Catalog/components/MangaCard.vue'
+import { isErotic } from '@/utils/mangaFormatters'
 import { toCdnUrl } from '@/utils/cdn'
 
 const populars = ref([])
@@ -17,14 +18,10 @@ const mostViewed = ref([])
 const loading = ref(true)
 const error = ref(null)
 const popularTab = ref('all')
-const pendingTab = ref('pending')
-const trendingTab = ref('all')
+// Control variables
 const trendingFilter = ref('all') // control used now via tabs
 // Cache for fast tab switching (client-side filtered lists)
 const trendingCache = ref({ all: [], shonen: [], seinen: [], erotico: [] })
-// Avoid flicker while switching tabs and guard late API responses
-const switching = ref(false)
-let trendingFilterReqId = 0
 const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 // Mapa de demografías para resolver descripción/color sin esperas
 const demografiasMap = new Map()
@@ -33,7 +30,8 @@ let demografiasLoaded = false
 // --- Auth state (Pinia) para control de acceso ---
 const auth = useAuthStore()
 const isAuthenticated = computed(() => auth.isAuthenticated)
-const isSuperuser = ref(false)
+
+const queryClient = useQueryClient()
 
 // Reaccionar a cambios de autenticación (logout/login)
 // Al desloguearse, ocultar sección erótico y limpiar su caché
@@ -67,14 +65,6 @@ function setPopularTab(v) {
     displayedTrending.value = [] 
   }
 }
-function setPendingTab(v) { pendingTab.value = v }
-function setTrendingTab(v) { trendingTab.value = v }
-function setTrendingFilter(e) { trendingFilter.value = e.target ? e.target.value : e }
-
-// Try a list of API endpoints (relative). No mocks or local fallbacks.
-const apiCandidates = [
-  'mangas',
-]
 
 function normalizeData(raw) {
   if (Array.isArray(raw)) return raw;
@@ -148,20 +138,7 @@ async function processItems(items) {
   })
 }
 
-async function tryApis() {
-  for (const ep of apiCandidates) {
-    try {
-      const key = cache.keyFrom(ep)
-      const cached = cache.get(key)
-      if (cached) return cached
-      const res = await api.get(ep)
-      if (res && res.data) return res.data
-    } catch (e) {
-      // ignore and try next
-    }
-  }
-  return null
-}
+
 
 
  
@@ -220,84 +197,49 @@ async function fetchSpecificTab(type) {
     const res = await api.get('mangas', { params })
     const data = await processItems(normalizeData(res?.data))
     trendingCache.value[type] = data
-  } catch (e) {}
+  } catch { /* ignore */ }
 }
 
 async function fetchDemografiaIds() {
   try {
-    const p = { page_size: 100 }
-    const k = cache.keyFrom('catalog/demografias', p)
-    const c = cache.get(k)
-    const r = c ? { data: c } : await api.get('catalog/demografias', { params: p })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    cache.set(k, list, 24 * 60 * 60 * 1000)
+    const list = await queryClient.fetchQuery({
+      queryKey: ['catalog', 'demografias'],
+      queryFn: async () => {
+        const r = await api.get('catalog/demografias', { params: { page_size: 1000 } })
+        return Array.isArray(r.data) ? r.data : (r.data?.results || [])
+      },
+      staleTime: 24 * 60 * 60 * 1000
+    })
     for (const d of list) {
       const desc = (d.descripcion || d.name || d.title || '').toLowerCase()
       if (desc.includes('shonen') || desc.includes('shounen')) demografiaIds.value.shonen = d.id
       else if (desc.includes('seinen')) demografiaIds.value.seinen = d.id
       else if (desc.includes('erot') || desc.includes('ecchi')) demografiaIds.value.erotico = d.id
     }
-  } catch (e) { /* ignore */ }
-}
-
-async function ensureDemografiaIds() {
-  // Asegurar que tengamos IDs antes de hacer requests filtrados
-  if (!demografiaIds.value.shonen || !demografiaIds.value.seinen) {
-    await fetchDemografiaIds()
-  }
+  } catch { /* ignore */ }
 }
 
 // Precargar lista completa de demografías para evitar múltiples llamadas por ítem
 async function preloadDemografias() {
   if (demografiasLoaded) return
   try {
-    const p = { page_size: 1000 }
-    const k = cache.keyFrom('catalog/demografias', p)
-    const c = cache.get(k)
-    const r = c ? { data: c } : await api.get('catalog/demografias', { params: p })
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
-    cache.set(k, list, 24 * 60 * 60 * 1000)
+    const list = await queryClient.fetchQuery({
+      queryKey: ['catalog', 'demografias'],
+      queryFn: async () => {
+        const r = await api.get('catalog/demografias', { params: { page_size: 1000 } })
+        return Array.isArray(r.data) ? r.data : (r.data?.results || [])
+      },
+      staleTime: 24 * 60 * 60 * 1000
+    })
     for (const d of list) {
       const desc = d.descripcion || d.name || d.title || ''
       const color = d.color || d.dem_color || ''
       demografiasMap.set(Number(d.id), { descripcion: desc, color })
     }
     demografiasLoaded = true
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
-async function resolveDemografiaDescripcion(idOrName) {
-  if (!idOrName && idOrName !== 0) return { descripcion: '', color: '' }
-  // Intento por ID numérico en mapa precargado
-  const mid = Number(idOrName)
-  if (Number.isFinite(mid) && demografiasMap.has(mid)) return demografiasMap.get(mid)
-  // Intento por clave directa
-  const direct = demografiasMap.get(idOrName)
-  if (direct) return { descripcion: direct.descripcion || direct.name || direct.title || '', color: direct.color || direct.dem_color || '' }
-  // Intento por nombre/descripción (case-insensitive) en mapa
-  if (typeof idOrName === 'string' && demografiasMap.size) {
-    const needle = idOrName.trim().toLowerCase()
-    for (const [, val] of demografiasMap) {
-      const name = (val.descripcion || val.name || val.title || '').trim().toLowerCase()
-      if (name && name === needle) {
-        return { descripcion: val.descripcion || val.name || val.title || '', color: val.color || val.dem_color || '' }
-      }
-    }
-  }
-  // Fallback: petición directa por ID; si es texto, se intentará listado
-  try {
-    const r = await api.get(`catalog/demografias/${idOrName}`)
-    const d = r?.data || {}
-    return { descripcion: d.descripcion || d.name || d.title || '', color: d.color || d.dem_color || '' }
-  } catch (e) {}
-  try {
-    const rl = await api.get('catalog/demografias', { params: { page_size: 1000 } })
-    const list = Array.isArray(rl.data) ? rl.data : (rl.data?.results || [])
-    const found = list.find(x => String(x.id) === String(idOrName) || String((x.descripcion || x.name || x.title || '')).toLowerCase() === String(idOrName).toLowerCase()) || {}
-    return { descripcion: found.descripcion || found.name || found.title || '', color: found.color || found.dem_color || '' }
-  } catch (e) {}
-  return { descripcion: '', color: '' }
-}
 
 // El filtro de trending se resuelve en cliente usando el cache cargado
 function loadTrendingFiltered() {
@@ -362,73 +304,7 @@ function getFilteredByTab(tab) {
 
 // (moved into onMounted above with demografia fetch)
 
-// Helper to map a type/demography to a color class
-function typeClass(item) {
-  // Normalize possible shapes: string, array, object
-  let raw = item && (item.demography || item.type || item.book_type || '')
-  if (Array.isArray(raw)) raw = raw.join(' ')
-  if (raw && typeof raw === 'object') raw = raw.name || raw.title || JSON.stringify(raw)
-  raw = String(raw || '').toLowerCase()
-  if (raw.includes('manhwa')) return 'type-manhwa'
-  if (raw.includes('manhua')) return 'type-manhua'
-  if (raw.includes('novel') || raw.includes('novela')) return 'type-novela'
-  if (raw.includes('shoujo')) return 'type-shoujo'
-  if (raw.includes('josei')) return 'type-josei'
-  if (raw.includes('seinen')) return 'type-seinen'
-  if (raw.includes('shounen') || raw.includes('shonen')) return 'type-shounen'
-  if (raw.includes('manga')) return 'type-manga'
-  return 'type-default'
-}
 
-// Return a readable demography/type string for the template
-function displayType(item) {
-  let val = item && (item.demography || item.dem_descripcion || item.demografia_descripcion || item.demografia || item.type || '')
-  // If val is a JSON string, parse it
-  if (typeof val === 'string') {
-    const s = val.trim()
-    if (s.startsWith('{') || s.startsWith('[')) {
-      try { val = JSON.parse(s) } catch (e) { /* keep original string */ }
-    }
-  }
-  if (Array.isArray(val)) val = val.join(' ')
-  if (val && typeof val === 'object') val = val.descripcion || val.description || val.name || val.title || val.label || JSON.stringify(val)
-  return String(val || 'MANGA')
-}
-
-// Return origin label: Manga / Manhua / Manhwa / Novela
-function originLabel(item) {
-  let t = item && (item.mng_tipo_manga || item.mng_tipo_serie || item.tipo_serie || item.manga_tipo_serie || item.type || item.book_type || item.raw?.type || item.origin || '')
-  if (!t && item) {
-    // try tags or demography heuristics
-    const tags = item.tags || item.tags_list || []
-    if (Array.isArray(tags) && tags.length) {
-      const joined = tags.map(x => (x.nombre || x.name || x)).join(' ').toLowerCase()
-      if (joined.includes('manhwa')) t = 'manhwa'
-      if (joined.includes('manhua')) t = 'manhua'
-    }
-  }
-  if (typeof t === 'string') t = t.toLowerCase()
-  // Normalize common synonyms
-  const norm = String(t || '')
-  if (norm.includes('comic')) return 'Comic'
-  if (/one[\s_\-]?shot/.test(norm)) return 'One-shot'
-  if (t && t.includes('manhwa')) return 'Manhwa'
-  if (t && t.includes('manhua')) return 'Manhua'
-  if (t && t.includes('novel')) return 'Novela'
-  return 'Manga'
-}
-
-function isErotic(item) {
-  if (!item) return false
-  if (item.erotic === true) return true
-  if (item.tags && Array.isArray(item.tags)) {
-    const joined = item.tags.map(t => (t.nombre || t.name || t)).join(' ').toLowerCase()
-    if (joined.includes('ecchi') || joined.includes('erotic') || joined.includes('erótico') || joined.includes('erotico')) return true
-  }
-  const dem = (String(item.demography || item.demografia || item.type || '')).toLowerCase()
-  if (dem.includes('erotic') || dem.includes('erótico') || dem.includes('erotico') || dem.includes('ecchi')) return true
-  return false
-}
 
 </script>
 
@@ -488,20 +364,7 @@ function isErotic(item) {
               <div class="tab-content" id="pills-tabContent" :key="popularTab">
                 <div v-show="popularTab === 'all'" class="tab-pane" id="pills-populars" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
-                    <div v-for="(item, index) in populars.filter(i => i.erotic !== true)" :key="item.id" class="card-item">
-                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
-                          <div class="thumbnail book">
-                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" 
-                               :loading="index < 6 ? 'eager' : 'lazy'" 
-                               :fetchpriority="index < 4 ? 'high' : 'auto'"
-                               decoding="async" />
-                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
-                          <span class="book-type badge badge-manga">MANGA</span>
-                          <div class="type-bubble">{{ originLabel(item) }}</div>
-                          <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
-                        </div>
-                      </a>
-                    </div>
+                    <MangaCard v-for="(item, index) in populars.filter(i => i.erotic !== true)" :key="item.id" :item="item" :index="index" :showEroticLabel="isAuthenticated" />
                   </div>
 
                   <!-- Recommendation block moved up below popular cards -->
@@ -529,46 +392,19 @@ function isErotic(item) {
                 <div v-show="popularTab === 'shonen'" class="tab-pane" id="pills-populars-shonen" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
-                    <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" class="card-item">
-                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
-                        <div class="thumbnail book">
-                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
-                          <div class="type-bubble">{{ originLabel(item) }}</div>
-                          <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
-                        </div>
-                      </a>
-                    </div>
+                    <MangaCard v-for="(item, index) in displayedTrending.filter(i => i.erotic !== true)" :key="`sh-${item.id}`" :item="item" :index="index" :showEroticLabel="isAuthenticated" />
                   </div>
                 </div>
                 <div v-show="popularTab === 'seinen'" class="tab-pane" id="pills-populars-seinen" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
-                    <div v-for="item in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" class="card-item">
-                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
-                        <div class="thumbnail book">
-                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
-                          <div class="type-bubble">{{ originLabel(item) }}</div>
-                          <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
-                        </div>
-                      </a>
-                    </div>
+                    <MangaCard v-for="(item, index) in displayedTrending.filter(i => i.erotic !== true)" :key="`se-${item.id}`" :item="item" :index="index" :showEroticLabel="isAuthenticated" />
                   </div>
                 </div>
                 <div v-if="isAuthenticated" v-show="popularTab === 'erotico'" class="tab-pane" id="pills-populars-erotico" role="tabpanel" aria-labelledby="pills-tab">
                   <div class="cards-grid">
                     <!-- Usar displayedTrending para evitar que cargas tardías reemplacen el filtro -->
-                    <div v-for="item in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" class="card-item">
-                  <a :href="`/library/manga/${item.slug || item.id}`" class="card-link">
-                        <div class="thumbnail book">
-                      <img :src="toCdnUrl(item.displayCover || item.cover, { w: 400, q: 80 })" :alt="item.title" loading="lazy" decoding="async" />
-                          <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
-                          <div class="type-bubble">{{ originLabel(item) }}<span class="age-18">+18</span></div>
-                          <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
-                        </div>
-                      </a>
-                    </div>
+                    <MangaCard v-for="(item, index) in displayedTrending.filter(i => i.erotic === true)" :key="`er-${item.id}`" :item="item" :index="index" :showEroticLabel="isAuthenticated" />
                   </div>
                 </div>
               </div>
@@ -582,22 +418,15 @@ function isErotic(item) {
 
 
               <div class="cards-grid cards-grid--trending">
-                <div v-for="(item, index) in (popularTab === 'erotico' 
+                <MangaCard 
+                  v-for="(item, index) in (popularTab === 'erotico' 
                     ? displayedTrending.filter(i => isErotic(i)) 
                     : (isAuthenticated ? displayedTrending : displayedTrending.filter(i => !isErotic(i))))" 
-                  :key="`tr-${item.id}`" class="card-item">
-                  <a :href="`/library/manga/${item.id}`" class="card-link">
-                    <div class="thumbnail book">
-                      <img :src="item.displayCover || item.cover" :alt="item.title" 
-                           :loading="index < 6 ? 'eager' : 'lazy'" 
-                           :fetchpriority="index < 4 ? 'high' : 'auto'"
-                           decoding="async" />
-                      <div class="thumbnail-title top-strip"><h3 class="h6 m-0 text-truncate" :title="item.title">{{ item.title }}</h3></div>
-                      <div class="type-bubble">{{ originLabel(item) }}<span v-if="isAuthenticated && isErotic(item)" class="age-18">+18</span></div>
-                      <div class="thumbnail-type-bar" :class="typeClass(item)" :style="{ '--type-bar-color': item.dem_color || undefined }">{{ displayType(item) }}</div>
-                    </div>
-                  </a>
-                </div>
+                  :key="`tr-${item.id}`" 
+                  :item="item" 
+                  :index="index" 
+                  :showEroticLabel="isAuthenticated" 
+                />
               </div>
             </div>
           </div>

@@ -14,7 +14,6 @@ const newDemografiaColor = ref('')
 const newTag = ref('')
 const newAutor = ref('')
 const newAutorTipo = ref('')
-const newAutorFoto = ref('')
 const newEstado = ref('')
 
 async function fetchLists() {
@@ -59,13 +58,9 @@ async function patchItem(endpoint, id, payload) {
     const r = await api.patch(`${endpoint}${id}/`, payload)
     return r?.data
   } catch (e) {
-    try {
-      const base = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint
-      const r2 = await api.patch(`${base}/${id}/`, payload)
-      return r2?.data
-    } catch (e2) {
-      throw e2
-    }
+    const base = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint
+    const r2 = await api.patch(`${base}/${id}/`, payload)
+    return r2?.data
   }
 }
 

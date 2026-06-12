@@ -66,7 +66,7 @@ export function useMangaUI() {
         const norm = String(t || '')
 
         if (norm.includes('comic')) return 'Comic'
-        if (/one[\s_\-]?shot/.test(norm)) return 'One-shot'
+        if (/one[\s_-]?shot/.test(norm)) return 'One-shot'
         if (norm.includes('manhwa')) return 'Manhwa'
         if (norm.includes('manhua')) return 'Manhua'
         if (norm.includes('novel')) return 'Novela'

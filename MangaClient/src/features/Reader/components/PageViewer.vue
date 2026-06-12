@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
 
 export default {
   name: 'PageViewer',
@@ -128,7 +128,7 @@ export default {
       translateY.value = 0
     }
 
-    function onDoubleTap(e) {
+    function onDoubleTap() {
       if (scale.value > 1.2) {
         resetZoom()
       } else {

@@ -6,35 +6,35 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('@/features/Catalog/views/HomeView.vue'),
     },
     {
       path: '/library',
       name: 'library',
-      component: () => import('../views/LibraryView.vue'),
+      component: () => import('@/features/Catalog/views/LibraryView.vue'),
     },
     {
       path: '/reader/:slug',
       name: 'reader',
-      component: () => import('../views/ReaderView.vue'),
+      component: () => import('@/features/Reader/views/ReaderView.vue'),
       props: true,
     },
     // legacy/alternate route used in templates: keep for backwards compatibility
     {
       path: '/library/manga/:slug',
       name: 'library-manga',
-      component: () => import('../views/ReaderView.vue'),
+      component: () => import('@/features/Reader/views/ReaderView.vue'),
       props: route => ({ slug: route.params.slug }),
     },
     {
       path: '/login',
       name: 'login',
-      component: () => import('../views/LoginView.vue'),
+      component: () => import('@/features/Auth/views/LoginView.vue'),
     },
     {
       path: '/chapter/:chapterId',
       name: 'chapter',
-      component: () => import('../views/ChapterView.vue'),
+      component: () => import('@/features/Reader/views/ChapterView.vue'),
       props: true,
     },
     // Legacy alias: redirect /uploads and /dev/uploads etc
@@ -49,32 +49,32 @@ const router = createRouter({
         {
           path: '',
           name: 'admin-dashboard',
-          component: () => import('../views/AdminDashboardView.vue'),
+          component: () => import('@/features/Admin/views/AdminDashboardView.vue'),
         },
         {
           path: 'upload',
           name: 'admin-upload',
-          component: () => import('../views/UploadChapterView.vue'),
+          component: () => import('@/features/Admin/views/UploadChapterView.vue'),
         },
         {
           path: 'mantenedores',
           name: 'admin-mantenedores',
-          component: () => import('../views/MantenedoresAdminView.vue'),
+          component: () => import('@/features/Admin/views/MantenedoresAdminView.vue'),
         },
         {
           path: 'mangas',
           name: 'admin-mangas',
-          component: () => import('../views/MangasAdminView.vue'),
+          component: () => import('@/features/Admin/views/MangasAdminView.vue'),
         },
         {
           path: 'profiles',
           name: 'admin-profiles',
-          component: () => import('../views/ProfilesAdminView.vue'),
+          component: () => import('@/features/Admin/views/ProfilesAdminView.vue'),
         },
         {
           path: 'worker',
           name: 'admin-worker',
-          component: () => import('../views/WorkerAdminView.vue'),
+          component: () => import('@/features/Admin/views/WorkerAdminView.vue'),
         },
       ]
     },

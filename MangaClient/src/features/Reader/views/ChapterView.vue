@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import MangaReader from '../components/MangaReader.vue'
+import MangaReader from '@/features/Reader/components/MangaReader.vue'
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { getChapter, listChapters } from '@/services/chapterService'
@@ -63,9 +63,7 @@ async function load() {
   loading.value = true
   try {
     if (import.meta?.env?.DEV) {
-      const apiClient = (await import('@/services/api')).default
       // No mocks in this snippet logic, keeping original structure
-      const list = [] 
       // DEV MOCK LOGIC OMITTED FOR BRIEFNESS AS ORIGINAL HAD EMPTY ARRAY RETURN
       // ...
     } else {

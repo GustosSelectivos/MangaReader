@@ -164,12 +164,8 @@ async function searchMangasManual() {
       const r = await api.get('manga/mangas/', { params })
       list = Array.isArray(r.data) ? r.data : (r.data?.results || [])
     } catch (e1) {
-      try {
-        const r2 = await api.get('mangas/', { params })
-        list = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
-      } catch (e2) {
-        throw e2
-      }
+      const r2 = await api.get('mangas/', { params })
+      list = Array.isArray(r2.data) ? r2.data : (r2.data?.results || [])
     }
     mangas.value = list
       .map(m => ({ id: m.id, titulo: m.titulo || m.title || `Manga #${m.id}`, codigo: m.codigo || m.code || '' }))
@@ -260,7 +256,7 @@ async function submit() {
     
     uploading.value = true
     try {
-       const res = await api.post('chapters/fetch/', {
+       await api.post('chapters/fetch/', {
           url: importUrl.value,
           manga_id: payload.manga,
           chapter_num: payload.capitulo_numero,

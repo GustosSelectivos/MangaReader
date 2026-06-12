@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useSmartFetch } from '@/composables/useSmartFetch'
+import { ref } from 'vue'
 import api from '@/services/api'
 import cache from '@/services/cache'
 

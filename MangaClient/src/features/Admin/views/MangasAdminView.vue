@@ -1,18 +1,15 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import { listEstados, listDemografias, listAutores, listTags } from '@/services/mantenedorService'
-import { listMangasBasic, createManga, listAltTitulos, listCovers, listAutoresRel, listTagsRel, createAltTitulo, createCover, createAutorRel, createTagRel } from '@/services/mangaAdminService'
+import { listMangasBasic, listAltTitulos, listCovers, listAutoresRel, listTagsRel } from '@/services/mangaAdminService'
 
 // Vista: lista, búsqueda o formulario (por defecto: lista)
 const currentView = ref('list') // 'list' | 'search' | 'form'
 
 // Step 1: Search
-const searchType = ref('nombre')
 const searchQuery = ref('')
 const searchResults = ref([])
-const searching = ref(false)
-const searchError = ref('')
 
 // Step 2: Selected manga & form data
 const selectedSerie = ref(null)
@@ -221,45 +218,7 @@ async function toggleErotico(m) {
   }
 }
 
-// Show search view
-function showSearchView() {
-  currentView.value = 'search'
-  searchResults.value = []
-  searchQuery.value = ''
-  searchError.value = ''
-}
 
-// Search mangas
-async function searchMangas() {
-  if (!searchQuery.value.trim()) {
-    searchError.value = 'Debe ingresar un término de búsqueda'
-    return
-  }
-  
-  searching.value = true
-  searchError.value = ''
-  searchResults.value = []
-  
-  try {
-    const params = {}
-    if (searchType.value === 'nombre') {
-      params.search = searchQuery.value.trim()
-    } else if (searchType.value === 'codigo') {
-      params.codigo = searchQuery.value.trim()
-    }
-    
-    const response = await api.get('manga/mangas/', { params })
-    searchResults.value = response.data.results || response.data || []
-    
-    if (searchResults.value.length === 0) {
-      searchError.value = 'No se encontraron series con ese criterio'
-    }
-  } catch (e) {
-    searchError.value = e.response?.data?.detail || 'Error al buscar series'
-  } finally {
-    searching.value = false
-  }
-}
 // Cargar datos relacionados del manga seleccionado
 async function loadRelatedForManga(mangaId) {
   try {
@@ -616,7 +575,7 @@ async function saveManga() {
   }
 }
 
-const canSearch = computed(() => searchQuery.value.trim().length > 0)
+
 
 onMounted(() => {
   fetchMangas()

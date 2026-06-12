@@ -40,11 +40,11 @@ export async function incrementMangaView(id) {
 }
 
 // Deprecated en FastAPI: Las portadas ahora se incluyen directamente en el objeto Manga como `cover_url`
-export async function listMangaCovers(params = {}) {
+export async function listMangaCovers() {
   return []
 }
 
-export async function getMangaCover(id) {
+export async function getMangaCover() {
   return {}
 }
 

@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { toCdnUrl } from '@/utils/cdn'
 
-const props = defineProps({
+defineProps({
   items: {
     type: Array,
     default: () => []

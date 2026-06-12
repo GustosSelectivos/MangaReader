@@ -22,11 +22,11 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const rJwt = await api.post('token/', { username, password })
         data = rJwt?.data || null
-      } catch (eJwt) {
+      } catch {
         try {
           const rAlt = await api.post('api/token/', { username, password })
           data = rAlt?.data || null
-        } catch (eAlt) {
+        } catch {
           const rTok = await api.post('token-auth/', { username, password })
           data = rTok?.data || null
         }
@@ -37,15 +37,15 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = { username, ...('user' in data ? data.user : {}) }
       persist()
       // Set default auth header for subsequent API calls
-      try { api.defaults.headers.common['Authorization'] = `Bearer ${token.value}` } catch (e) {}
+      try { api.defaults.headers.common['Authorization'] = `Bearer ${token.value}` } catch {}
       // Fetch global permissions for the current user (if available)
       try {
         const rPerm = await api.get('auth/permissions/')
         permissions.value = rPerm?.data?.permissions || []
         localStorage.setItem('auth_permissions', JSON.stringify(permissions.value))
-      } catch (e) {
+      } catch {
         permissions.value = []
-        try { localStorage.removeItem('auth_permissions') } catch (e2) {}
+        try { localStorage.removeItem('auth_permissions') } catch {}
       }
       return true
     } catch (e) {
@@ -63,7 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
     localStorage.removeItem('auth_permissions')
-    try { delete api.defaults.headers.common['Authorization'] } catch (e) {}
+    try { delete api.defaults.headers.common['Authorization'] } catch {}
   }
 
   function persist() {

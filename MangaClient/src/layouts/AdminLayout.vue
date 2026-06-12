@@ -1,6 +1,6 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import AdminToolbar from '@/components/AdminToolbar.vue'
+import { RouterView } from 'vue-router'
+import AdminToolbar from '@/features/Admin/components/AdminToolbar.vue'
 </script>
 
 <template>

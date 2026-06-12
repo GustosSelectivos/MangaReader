@@ -11,10 +11,10 @@ class ChapterService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def list_chapters(self, page: int, page_size: int, manga_id: int | None, search: str | None, ordering: str):
+    async def list_chapters(self, page: int, page_size: int, manga_param: str | None, search: str | None, ordering: str):
         return await repo.get_chapters(
             self.db, page=page, page_size=page_size,
-            manga_id=manga_id, search=search, ordering=ordering
+            manga_param=manga_param, search=search, ordering=ordering
         )
 
     async def get_chapter(self, chapter_id: int):

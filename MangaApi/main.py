@@ -117,7 +117,7 @@ app.add_middleware(DACAuditMiddleware)
 app.add_middleware(APICallCounterMiddleware)
 
 # 5. Request Logger (para visualizar detalles de tiempo, ip, status)
-app.add_middleware(RequestLoggerMiddleware)
+# app.add_middleware(RequestLoggerMiddleware)
 
 # 1. CORS (Debe ser el ÚLTIMO en añadirse para que sea la capa más externa y atrape OPTIONS)
 app.add_middleware(

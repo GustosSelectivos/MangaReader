@@ -1,20 +1,6 @@
 <script setup>
-import { useRoute, RouterLink } from 'vue-router'
-import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 
-const route = useRoute()
-
-// Computed title based on current route name or meta
-const pageTitle = computed(() => {
-  switch (route.name) {
-    case 'admin-dashboard': return 'Dashboard General';
-    case 'mangas-admin': return 'Gestión de Mangas';
-    case 'upload-chapter': return 'Subir Capítulo';
-    case 'mantenedores-admin': return 'Mantenedores';
-    case 'profiles-admin': return 'Perfiles de Usuario';
-    default: return 'Administración';
-  }
-})
 </script>
 
 <template>

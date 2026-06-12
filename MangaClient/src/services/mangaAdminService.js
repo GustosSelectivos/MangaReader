@@ -48,18 +48,18 @@ export async function createTagRel(payload) {
   return payload
 }
 
-export async function listAltTitulos(params = {}) {
+export async function listAltTitulos() {
   return []
 }
 
-export async function listCovers(params = {}) {
+export async function listCovers() {
   return []
 }
 
-export async function listAutoresRel(params = {}) {
+export async function listAutoresRel() {
   return []
 }
 
-export async function listTagsRel(params = {}) {
+export async function listTagsRel() {
   return []
 }
