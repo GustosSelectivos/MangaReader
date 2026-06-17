@@ -517,8 +517,8 @@ function getFilteredByTab(tab) {
 @media (max-width: 576px) {
   .home-view .thumbnail.book { min-height: 180px; }
   .home-view .nav { justify-content: center; }
-  /* Force at least 3 columns: allow very small card width */
-  .cards-grid { gap:8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* On mobile, grid shows 2 columns */
+  .cards-grid { gap:8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* On mobile, trending grid shows 2 columns */
   .cards-grid.cards-grid--trending { grid-template-columns: repeat(2, 1fr); }
   .cards-grid .thumbnail.book { aspect-ratio: 9 / 14; min-height: 170px; }
@@ -530,8 +530,8 @@ function getFilteredByTab(tab) {
 /* Extra small phones */
 @media (max-width: 420px) {
   .home-view { padding-left: 10px; padding-right: 10px; }
-  /* Maintain 3 columns on very narrow screens */
-  .cards-grid { grid-template-columns: repeat(3, 1fr); gap:6px; }
+  /* On extra-small, maintain 2 columns */
+  .cards-grid { grid-template-columns: repeat(2, 1fr); gap:6px; }
   /* Trending grid stays at 2 columns on extra-small */
   .cards-grid.cards-grid--trending { grid-template-columns: repeat(2, 1fr); }
   .cards-grid .thumbnail.book { min-height: 160px; }

@@ -66,12 +66,12 @@
                 <ul class="list-group list-group-flush">
                   <li v-for="(ch, idx) in visibleChapters" :key="ch.id" class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
-                      <div @click="selectChapter(idx)" class="chapter-title text-truncate" style="cursor:pointer">
+                      <div @click="openChapter(ch)" class="chapter-title text-truncate" style="cursor:pointer">
                         {{ ch.title || ('Capítulo ' + ch.number) }}
                       </div>
                       <div class="d-flex align-items-center gap-3">
                         <small class="text-muted">{{ ch.date }}</small>
-                        <button class="btn btn-sm btn-primary" @click="openChapter(idx)" aria-label="Leer capítulo">
+                        <button class="btn btn-sm btn-primary" @click="openChapter(ch)" aria-label="Leer capítulo">
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M6 4.5v7l6-3.5-6-3.5z" />
                           </svg>
@@ -81,9 +81,10 @@
                   </li>
                 </ul>
               </section>
+
               <!-- Always-visible upload button under chapters -->
               <div class="mb-3">
-                <a :href="uploadLink" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" aria-label="Subir capítulo">
+                <a href="#" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" aria-label="Subir capítulo">
                   <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                     <path d="M8 2l4 4H9v4H7V6H4l4-4z"/>
                     <path d="M3 12h10v2H3z"/>
@@ -92,241 +93,116 @@
                 </a>
               </div>
               
-              <!-- reader-frame removed: chapter reading UI moved to ChapterView -->
             </div>
           </div>
-
-          
         </div>
-
-        <!-- Comments removed per request -->
       </div>
     </main>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toCdnUrl } from '@/utils/cdn'
 import { listChapters } from '@/services/chapterService'
 import { getManga } from '@/services/mangaService'
-import api from '@/services/api'
-import { getCoverByIdCached, getMainCoverCached } from '@/services/coverService'
 
-export default {
-  name: 'ReaderView',
-  props: { 
-    mangaId: { type: [String, Number], required: false },
-    slug: { type: String, required: false }
-  },
-  setup(props) {
-    const route = useRoute()
-    const mangaIdVal = computed(() => props.slug ?? props.mangaId ?? route.params.slug ?? route.params.mangaId)
+const props = defineProps({
+  mangaId: { type: [String, Number], required: false },
+  slug: { type: String, required: false }
+})
 
-    const pages = ref([])
-    const initialPage = ref(1)
-    const mangaTitle = ref('Demo Manga')
-    const cover = ref('')
-    const description = ref('')
-    const rating = ref('0.00')
-    const year = ref('')
-    const genres = ref([])
-    const mainDemography = ref('')
-    const statusDisplay = ref(null)
-    const bookType = ref('MANGA')
-    const altTitles = ref([])
-    const synonyms = ref([])
+const route = useRoute()
+const router = useRouter()
+const mangaIdVal = computed(() => props.slug ?? props.mangaId ?? route.params.slug ?? route.params.mangaId)
 
-    const chapters = ref([])
-    const selectedIndex = ref(0)
-    const selectedChapter = computed(() => chapters.value[selectedIndex.value] || null)
-    const loading = ref(true)
-    const error = ref(null)
-    const showAllChapters = ref(false)
-    const orderAsc = ref(false)
+const mangaTitle = ref('Manga')
+const cover = ref('')
+const description = ref('')
+const rating = ref('0.00')
+const year = ref('')
+const genres = ref([])
+const mainDemography = ref('')
+const statusDisplay = ref(null)
+const bookType = ref('MANGA')
+const altTitles = ref([])
+const synonyms = ref([])
 
-    const pageSizeDemo = ['/assets/demo/page1.jpg', '/assets/demo/page2.jpg']
+const chapters = ref([])
+const loading = ref(true)
+const error = ref(null)
+const showAllChapters = ref(false)
+const orderAsc = ref(false)
 
-    // Caches locales para deduplicar requests de covers (por ID y por manga)
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const [mData, chList] = await Promise.all([
+      getManga(mangaIdVal.value),
+      listChapters({ manga: mangaIdVal.value, page_size: 1000 })
+    ])
 
-    function getCoverByIdCachedClient(apiClient, id) {
-      const cid = Number(id)
-      if (!cid || Number.isNaN(cid)) return Promise.resolve(null)
-      // Usar servicio centralizado: igual cachea en su propio mapa
-      return getCoverByIdCached(cid)
-    }
-    function getMainCoverCachedClient(apiClient, mangaId) {
-      const mid = String(mangaId)
-      if (!mid) return Promise.resolve(null)
-      return getMainCoverCached(mid)
-    }
-
-    async function load() {
-      loading.value = true
-      error.value = null
-      try {
-        let chs = []
-        let apiClient = null
-        const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV
-
-        // Attempt mock in dev
-        let mockLoaded = false
-        if (isDev) {
-          try {
-            const resp = await fetch('/mock/chapters_universal.json')
-            if (resp.ok) {
-              const data = await resp.json()
-              if (data) {
-                chs = data
-                mockLoaded = Array.isArray(chs) && chs.length > 0
-              }
-            }
-          } catch (e) { /* ignore */ }
-        }
-
-        // If mock not loaded (or not dev), use API
-        if (!mockLoaded) {
-          apiClient = api
-          // Cargar manga y capítulos en paralelo
-          const [m, chList] = await Promise.all([
-            getManga(mangaIdVal.value),
-            listChapters({ manga: mangaIdVal.value, page_size: 1000 })
-          ])
-          const mData = m || {}
-          mangaTitle.value = mData.titulo || mData.title || mangaTitle.value
-          cover.value = mData.cover || mData.cover_image || mData.url_imagen || cover.value
-          description.value = mData.sinopsis || mData.description || description.value
-          rating.value = String(mData.puntaje || mData.rating || rating.value)
-          year.value = String(mData.anio || mData.year || year.value)
-          // Map genres/demography
-          const g = mData.generos || mData.genres || mData.tags || []
-          genres.value = Array.isArray(g) ? g.map(x => (x.tag_descripcion || x.nombre || x.name || x.title || x)).filter(Boolean) : []
-          const dem = mData.demografia_display || mData.demografia || mData.demography || ''
-          mainDemography.value = typeof dem === 'object' ? (dem.descripcion || dem.name || dem.title) : String(dem || '')
-          // Status mapping
-          const estado = mData.estado_display || mData.estado || mData.status || ''
-          const estadoStr = typeof estado === 'object' ? (estado.descripcion || estado.name || estado.title) : String(estado || '')
-          if (estadoStr) statusDisplay.value = { label: estadoStr, on: /public|ongoing|publicándose|en emisión/i.test(estadoStr) }
-          // Series Type
-          const tipo = mData.tipo_serie || mData.type || 'manga'
-          bookType.value = String(tipo).toUpperCase()
-          // Alternative titles / synonyms
-          const alt = mData.titulos_alternativos || mData.alternative_titles || []
-          altTitles.value = Array.isArray(alt) ? alt.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
-          const syn = mData.sinonimos || mData.synonyms || []
-          synonyms.value = Array.isArray(syn) ? syn.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
-          if (!cover.value || typeof cover.value !== 'string' || cover.value.trim() === '' || !cover.value.startsWith('http')) {
-            const byId = await getCoverByIdCachedClient(apiClient, mData.cover_id || mData.main_cover_id || mData.cover)
-            cover.value = byId || (await getMainCoverCachedClient(apiClient, mangaIdVal.value)) || cover.value
-          }
-          chs = Array.isArray(chList) ? chList : []
-        } else if (mangaIdVal.value && Array.isArray(chs)) {
-          chs = chs.filter(c => String(c.manga) === String(mangaIdVal.value))
-        }
-
-        // Normalize chapter objects
-        chapters.value = chs.map(c => ({
-          id: c.id || c.pk || Math.random(),
-            title: c.titulo || c.title || `Capítulo ${c.capitulo_numero || c.number || ''}`,
-            number: c.capitulo_numero || c.number || '',
-            pages: Array.isArray(c.pages) ? c.pages : (c.pages && Array.isArray(c.pages.images) ? c.pages.images : null),
-            date: c.date || c.created_at || c.actualizado_en || c.creado_en || '',
-            raw: c
-        }))
-
-        if (chapters.value.length > 0) {
-          selectedIndex.value = 0
-          setPagesFromSelected()
-          // If header data missing, derive from first chapter
-          if (!mangaTitle.value) mangaTitle.value = chapters.value[0].raw?.manga_titulo || chapters.value[0].raw?.manga_title || mangaTitle.value
-          if (!cover.value) {
-            const client = apiClient || (await import('@/services/api')).default
-            cover.value = (await getMainCoverCachedClient(client, mangaIdVal.value)) || cover.value
-          }
-        } else {
-          pages.value = pageSizeDemo
-        }
-      } catch (err) {
-        console.error('Failed to load chapters', err)
-        error.value = err
-        pages.value = pageSizeDemo
-      } finally {
-        loading.value = false
-      }
+    if (mData) {
+      mangaTitle.value = mData.titulo || mData.title || mangaTitle.value
+      cover.value = mData.cover_url || mData.cover || mData.url_imagen || ''
+      description.value = mData.sinopsis || mData.description || ''
+      rating.value = String(mData.puntaje || mData.rating || rating.value)
+      year.value = String(mData.anio || mData.year || '')
+      
+      const g = mData.generos || mData.genres || mData.tags || []
+      genres.value = Array.isArray(g) ? g.map(x => (x.tag_descripcion || x.nombre || x.name || x.title || x)).filter(Boolean) : []
+      
+      const dem = mData.demografia_display || mData.demografia || mData.demography || ''
+      mainDemography.value = typeof dem === 'object' ? (dem.descripcion || dem.name || dem.title) : String(dem || '')
+      
+      const estado = mData.estado_display || mData.estado || mData.status || ''
+      const estadoStr = typeof estado === 'object' ? (estado.descripcion || estado.name || estado.title) : String(estado || '')
+      if (estadoStr) statusDisplay.value = { label: estadoStr, on: /public|ongoing|publicándose|en emisión/i.test(estadoStr) }
+      
+      const tipo = mData.tipo_serie || mData.type || 'manga'
+      bookType.value = String(tipo).toUpperCase()
+      
+      const alt = mData.titulos_alternativos || mData.alternative_titles || []
+      altTitles.value = Array.isArray(alt) ? alt.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
+      const syn = mData.sinonimos || mData.synonyms || []
+      synonyms.value = Array.isArray(syn) ? syn.map(x => (x.nombre || x.name || x.title || x)).filter(Boolean) : []
     }
 
-    function setPagesFromSelected() {
-      const ch = selectedChapter.value
-      if (ch && Array.isArray(ch.pages) && ch.pages.length) {
-        pages.value = ch.pages
-      } else if (ch && Array.isArray(ch.raw?.pages) && ch.raw.pages.length) {
-        const imgs = Array.isArray(ch.raw.pages) ? ch.raw.pages : (ch.raw.pages && Array.isArray(ch.raw.pages.images) ? ch.raw.pages.images : [])
-        pages.value = imgs.length ? imgs : pageSizeDemo
-      } else {
-        pages.value = pageSizeDemo
-      }
-      initialPage.value = 1
-    }
+    const chs = Array.isArray(chList) ? chList : []
+    chapters.value = chs.map(c => ({
+      id: c.id || c.pk || Math.random(),
+      title: c.titulo || c.title || `Capítulo ${c.capitulo_numero || c.number || ''}`,
+      number: c.capitulo_numero || c.number || '',
+      date: c.date || c.created_at || c.actualizado_en || c.creado_en || ''
+    }))
 
-    function selectChapter(idx) {
-      selectedIndex.value = idx
-      setPagesFromSelected()
-    }
-
-    function openChapter(idx) {
-      selectChapter(idx)
-      const ch = chapters.value[idx]
-      try {
-        router.push({ name: 'chapter', params: { chapterId: ch.id } })
-      } catch (e) {
-        // fallback: scroll to reader-frame if route push fails
-        const el = document.querySelector('.reader-frame')
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
-
-    function prevChapter() {
-      if (selectedIndex.value > 0) {
-        selectedIndex.value--
-        setPagesFromSelected()
-      }
-    }
-
-    function nextChapter() {
-      if (selectedIndex.value < chapters.value.length - 1) {
-        selectedIndex.value++
-        setPagesFromSelected()
-      }
-    }
-
-    const visibleChapters = computed(() => {
-      const list = orderAsc.value ? [...chapters.value].reverse() : chapters.value
-      if (showAllChapters.value) return list
-      return list.slice(0, 20)
-    })
-
-    function toggleOrder() { orderAsc.value = !orderAsc.value }
-
-    // shareUrl removed (share UI was removed)
-
-    const externalLink = computed(() => '#')
-    const uploadLink = computed(() => '#')
-
-    const router = useRouter()
-
-    onMounted(load)
-
-    return {
-      pages, initialPage, mangaTitle, cover, description, rating, year,
-      chapters, selectedChapter, selectedIndex, loading, error,
-      selectChapter, openChapter, prevChapter, nextChapter, visibleChapters,
-      showAllChapters, orderAsc, toggleOrder,
-      externalLink, uploadLink, genres, mainDemography, statusDisplay, altTitles, synonyms, bookType,
-      toCdnUrl
-    }
+  } catch (err) {
+    console.error('Failed to load manga details', err)
+    error.value = err
+  } finally {
+    loading.value = false
   }
 }
+
+function openChapter(ch) {
+  try {
+    router.push({ name: 'chapter', params: { chapterId: ch.id } })
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const visibleChapters = computed(() => {
+  const list = orderAsc.value ? [...chapters.value].reverse() : chapters.value
+  if (showAllChapters.value) return list
+  return list.slice(0, 20)
+})
+
+function toggleOrder() { orderAsc.value = !orderAsc.value }
+
+onMounted(load)
 </script>
 
 <style scoped>
@@ -383,9 +259,6 @@ export default {
   height: auto;
   object-fit: contain;
 }
-
-/* Libreta: dos páginas lado a lado */
-
 
 @media (max-width: 767px) {
   .book-thumbnail { width:140px }

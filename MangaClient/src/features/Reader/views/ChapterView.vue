@@ -62,82 +62,77 @@ async function fetchChapterList(params) { return await listChapters(params) }
 async function load() {
   loading.value = true
   try {
-    if (import.meta?.env?.DEV) {
-      // No mocks in this snippet logic, keeping original structure
-      // DEV MOCK LOGIC OMITTED FOR BRIEFNESS AS ORIGINAL HAD EMPTY ARRAY RETURN
-      // ...
+    const data = await fetchChapterDetail(props.chapterId)
+    if (data) {
+      chapter.value = data
+      const imgs = Array.isArray(data.pages) ? data.pages : (data.pages && Array.isArray(data.pages.images) ? data.pages.images : null)
+      pages.value = imgs && imgs.length ? imgs : ['/assets/demo/page1.jpg']
+      mangaTitle.value = data.manga_titulo || data.manga_title || data.title || ''
+      
+      // Fetch manga info to determine type/origin for reading direction
+      const mid = data.manga || data.manga_id
+      if (mid) {
+        try {
+          const m = await getManga(mid)
+          if (m) mangaOrigin.value = originLabel(m)
+        } catch (e) {}
+        await incrementMangaView(mid)
+        chaptersList.value = await fetchChapterList({ manga: mid, page_size: 1000 })
+      } else {
+        chaptersList.value = []
+      }
+      deriveNeighbors()
     } else {
-      const data = await fetchChapterDetail(props.chapterId)
-      if (data) {
-        chapter.value = data
-        const imgs = Array.isArray(data.pages) ? data.pages : (data.pages && Array.isArray(data.pages.images) ? data.pages.images : null)
-        pages.value = imgs && imgs.length ? imgs : ['/assets/demo/page1.jpg']
-        mangaTitle.value = data.manga_titulo || data.manga_title || data.title || ''
+      // Fallback or "else" branch
+      const list = await fetchChapterList({ page_size: 1000 })
+      const found = list.find(c => String(c.id) === String(props.chapterId)) || list[0]
+      if (found) {
+        chapter.value = found
+        const imgs2 = Array.isArray(found.pages) ? found.pages : (found.pages && Array.isArray(found.pages.images) ? found.pages.images : null)
+        pages.value = imgs2 && imgs2.length ? imgs2 : ['/assets/demo/page1.jpg']
+        mangaTitle.value = found.manga_titulo || found.manga_title || found.title || ''
         
-        // Fetch manga info to determine type/origin for reading direction
-        const mid = data.manga || data.manga_id
+        const mid = found.manga || found.manga_id
         if (mid) {
-          try {
-            const m = await getManga(mid)
-            if (m) mangaOrigin.value = originLabel(m)
-          } catch (e) {}
-          await incrementMangaView(mid)
-          chaptersList.value = await fetchChapterList({ manga: mid, page_size: 1000 })
-        } else {
-            chaptersList.value = []
+           try {
+              const m = await getManga(mid)
+              if (m) mangaOrigin.value = originLabel(m)
+           } catch (e) {}
+           await incrementMangaView(mid)
+           chaptersList.value = await fetchChapterList({ manga: mid, page_size: 1000 })
         }
         deriveNeighbors()
-      } else {
-        // Fallback or "else" branch
-        const list = await fetchChapterList({ page_size: 1000 })
-        const found = list.find(c => String(c.id) === String(props.chapterId)) || list[0]
-        if (found) {
-          chapter.value = found
-          const imgs2 = Array.isArray(found.pages) ? found.pages : (found.pages && Array.isArray(found.pages.images) ? found.pages.images : null)
-          pages.value = imgs2 && imgs2.length ? imgs2 : ['/assets/demo/page1.jpg']
-          mangaTitle.value = found.manga_titulo || found.manga_title || found.title || ''
-          
-          const mid = found.manga || found.manga_id
-          if (mid) {
-             try {
-                const m = await getManga(mid)
-                if (m) mangaOrigin.value = originLabel(m)
-             } catch (e) {}
-             await incrementMangaView(mid)
-             chaptersList.value = await fetchChapterList({ manga: mid, page_size: 1000 })
-          }
-          deriveNeighbors()
-        }
       }
     }
-// --- Prefetch Logic ---
-        // Load next chapter data silently after a short delay
-        if (chaptersList.value.length) {
-           setTimeout(() => {
-             const idx = chaptersList.value.findIndex(c => String(c.id) === String(props.chapterId))
-             if (idx >= 0 && idx < chaptersList.value.length - 1) {
-               const nextCh = chaptersList.value[idx + 1]
-               console.log(`Prefetching next chapter: ${nextCh.id}`)
-               // Prefetch JSON
-               getChapter(nextCh.id).then(data => {
-                  if (data) {
-                    // Optional: Prefetch first 3 images if we really want speed
-                    const imgs = Array.isArray(data.pages) ? data.pages : (data.pages && Array.isArray(data.pages.images) ? data.pages.images : [])
-                    if (imgs && imgs.length) {
-                      const preloadCount = Math.min(imgs.length, 3)
-                      for (let i=0; i<preloadCount; i++) {
-                         const link = document.createElement('link')
-                         link.rel = 'prefetch'
-                         link.href = imgs[i]
-                         document.head.appendChild(link)
-                      }
-                    }
-                  }
-               }).catch(()=>{})
-             }
-           }, 3000) // Wait 3s so current page renders first
+
+    // --- Prefetch Logic ---
+    // Load next chapter data silently after a short delay
+    if (chaptersList.value.length) {
+      setTimeout(() => {
+        const idx = chaptersList.value.findIndex(c => String(c.id) === String(props.chapterId))
+        if (idx >= 0 && idx < chaptersList.value.length - 1) {
+          const nextCh = chaptersList.value[idx + 1]
+          console.log(`Prefetching next chapter: ${nextCh.id}`)
+          // Prefetch JSON
+          getChapter(nextCh.id).then(data => {
+            if (data) {
+              // Optional: Prefetch first 3 images if we really want speed
+              const imgs = Array.isArray(data.pages) ? data.pages : (data.pages && Array.isArray(data.pages.images) ? data.pages.images : [])
+              if (imgs && imgs.length) {
+                const preloadCount = Math.min(imgs.length, 3)
+                for (let i=0; i<preloadCount; i++) {
+                   const link = document.createElement('link')
+                   link.rel = 'prefetch'
+                   link.href = imgs[i]
+                   document.head.appendChild(link)
+                }
+              }
+            }
+          }).catch(()=>{})
         }
-    } catch (err) {
+      }, 3000) // Wait 3s so current page renders first
+    }
+  } catch (err) {
     console.error('Failed to load chapter', err)
   } finally {
     loading.value = false
