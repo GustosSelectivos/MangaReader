@@ -1,38 +1,32 @@
-\section{Protocolos de Seguridad (ISO 27001 / 9001)}
+\section{Protocolos de Seguridad}
 
 \subsection{Control de Acceso (RBAC)}
-El sistema implementa un control de acceso basado en roles estricto:
+El sistema implementa un control de acceso basado en roles mediante Dependencias de FastAPI:
 
 \begin{enumerate}
-    \item \textbf{Anonimo:} Lectura básica. Rate Limit: 100/min.
-    \item \textbf{Registrado:} Lee capítulos. Rate Limit: 1000/min.
-    \item \textbf{Verificado (+18):} Acceso NSFW via \texttt{is\_nsfw\_allowed}.
-    \item \textbf{Staff:} Permisos de escritura y moderación.
+    \item \textbf{Anónimo:} Lectura de catálogo general y lectura de capítulos.
+    \item \textbf{Registrado (\texttt{get\_current\_user}):} Acceso a marcadores y lectura restringida.
+    \item \textbf{Verificado (+18):} Acceso a NSFW filtrado a nivel de serialización/base de datos.
+    \item \textbf{Admin (\texttt{get\_admin\_user}):} Permisos de escritura y acceso a endpoints de administración.
 \end{enumerate}
 
 \subsection{Autenticación}
-Se utiliza el estándar **JWT (JSON Web Token)**.
+Se utiliza el estándar **OAuth2 con JWT (JSON Web Token)**.
 \begin{itemize}
-    \item \textbf{Access Token:} Vida útil de 60 minutos.
-    \item \textbf{Refresh Token:} Vida útil de 7 días. Rotación automática.
+    \item \textbf{Access Token:} Firmado criptográficamente (HS256). Vida útil configurable (ej. 30 minutos).
+    \item \textbf{Almacenamiento:} El cliente (Vue) guarda el token en memoria o \texttt{localStorage} y lo anexa en el header \texttt{Authorization: Bearer}.
 \end{itemize}
 
 \subsection{Protección de Infraestructura}
 \subsubsection{Rate Limiting}
-Para mitigar ataques DDoS y scraping abusivo:
-\begin{lstlisting}[language=python, caption=Configuración de Throttling]
-'DEFAULT_THROTTLE_RATES': {
-    'anon': '100/min',
-    'user': '1000/min'
-}
-\end{lstlisting}
-
-\subsubsection{Cabeceras de Seguridad}
-Se fuerzan cabeceras HTTP para protección del cliente:
+Implementado mediante dependencias o middlewares de Throttling personalizados para FastAPI:
 \begin{itemize}
-    \item \texttt{SECURE\_BROWSER\_XSS\_FILTER}: Previene ataques XSS reflejados.
-    \item \texttt{SECURE\_CONTENT\_TYPE\_NOSNIFF}: Bloquea sniffing de MIME types.
+    \item Endpoints públicos: Límites más estrictos para frenar scraping.
+    \item Rutas autenticadas: Límites extendidos según rol.
 \end{itemize}
 
-\subsection{Auditoría}
-Todas las acciones administrativas y de acceso sensible se registran a través del middleware \texttt{DACAuditMiddleware}, almacenando IP, Usuario y Recurso accedido.
+\subsubsection{Protección de CDN (Hotlink Protection)}
+Los recursos estáticos pesados (imágenes almacenadas en Blackblaze B2) están protegidos mediante un Worker de Cloudflare en Edge. Éste verifica el header \texttt{Referer} y el \texttt{Origin}, bloqueando todo acceso directo no autorizado e incrustaciones desde dominios externos maliciosos.
+
+\subsection{CORS}
+Políticas estrictas gestionadas por el \texttt{CORSMiddleware} de FastAPI, permitiendo solicitudes provenientes únicamente de orígenes pre-aprobados (ej. el frontend en producción y \texttt{localhost} en desarrollo).

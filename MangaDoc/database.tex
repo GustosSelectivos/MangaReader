@@ -1,37 +1,37 @@
 \section{Base de Datos y Modelos}
 
 \subsection{Esquema Relacional}
-El sistema utiliza un esquema relacional normalizado para garantizar la integridad de los datos.
+El sistema utiliza un esquema relacional gestionado mediante SQLAlchemy y control de versiones de esquema con Alembic.
 
-\subsubsection{Modelo de Usuarios (\texttt{user\_models})}
+\subsubsection{Modelo de Usuarios (\texttt{User})}
 \begin{itemize}
-    \item \textbf{UserProfile}: Extensión 1-a-1 de \texttt{auth.User}. Almacena:
+    \item \textbf{User}: Modelo centralizado con email como identificador principal. Almacena:
     \begin{itemize}
-        \item \texttt{is\_nsfw\_allowed}: Booleano para control parental.
-        \item \texttt{reputation}: Sistema de karma/confianza.
-        \item \texttt{role}: Rol funcional (Lector, Moderador, Admin).
+        \item \texttt{is\_active}, \texttt{is\_superuser}: Permisos base.
+        \item \texttt{role}: Rol funcional (reader, moderator, admin).
+        \item \texttt{is\_nsfw\_allowed}: Booleano para control parental/contenido sensible.
     \end{itemize}
 \end{itemize}
 
-\subsubsection{Modelo de Mangas (\texttt{manga\_models})}
-La entidad central \texttt{manga} se relaciona con:
+\subsubsection{Modelo de Mangas (\texttt{Manga})}
+La entidad central \texttt{Manga} se relaciona con:
 \begin{itemize}
-    \item \textbf{Estado:} FK a \texttt{estados} (En emisión, Finalizado).
-    \item \textbf{Demografía:} FK a \texttt{demografia} (Seinen, Shonen).
-    \item \textbf{Tags:} M2M a \texttt{tags} para categorización.
-    \item \textbf{Autores:} M2M a \texttt{autores}.
+    \item \textbf{Estado:} FK a la tabla \texttt{Estado} (En emisión, Finalizado).
+    \item \textbf{Demografía:} FK a \texttt{Demografia} (Seinen, Shonen).
+    \item \textbf{Géneros/Tags:} M2M mediante tabla intermedia para categorización.
+    \item \textbf{Cover:} Relación para almacenar la portada principal y portadas secundarias.
 \end{itemize}
 
-\subsubsection{Modelo de Estructura (\texttt{mantenedor\_models})}
+\subsubsection{Modelo de Estructura}
 Tablas auxiliares para estandarización:
 \begin{itemize}
-    \item \texttt{demografia}: Clasificación de audiencia.
-    \item \texttt{estados}: Ciclo de vida del contenido.
-    \item \texttt{idioma}: Soporte multi-lenguaje.
+    \item \texttt{Demografia}: Clasificación de audiencia con soporte de color hexadecimal.
+    \item \texttt{Estado}: Ciclo de vida del contenido.
+    \item \texttt{Chapter}: Capítulos vinculados a cada Manga con arrays de páginas en JSON.
 \end{itemize}
 
 \subsection{Políticas de Integridad}
 \begin{itemize}
-    \item \textbf{Foreign Keys:} Se utiliza \texttt{on\_delete=models.PROTECT} en catálogos maestros para evitar borrados accidentales de categorías en uso.
-    \item \textbf{Transacciones:} Escritura crítica usa \texttt{transaction.atomic}.
+    \item \textbf{Integridad Referencial:} Restricciones y cascadas configuradas en SQLAlchemy.
+    \item \textbf{Transacciones:} Se manejan mediante \texttt{SessionLocal} y operaciones de commit/rollback explícitas.
 \end{itemize}

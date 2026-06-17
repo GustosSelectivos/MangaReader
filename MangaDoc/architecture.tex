@@ -1,30 +1,30 @@
 \section{Arquitectura del Sistema}
 
 \subsection{Visión General}
-MangaReader es una plataforma de distribución de contenido digital (manga/manhwa) construida sobre una arquitectura monolítica modular con Django REST Framework. El sistema está diseñado para alta disponibilidad, escalabilidad horizontal y seguridad robusta.
+MangaReader es una plataforma de distribución de contenido digital (manga/manhwa) construida sobre una arquitectura "Ponytail" ligera y modular con FastAPI. El sistema está diseñado para alta disponibilidad, baja latencia, escalabilidad horizontal y seguridad robusta.
 
 \subsection{Tecnologías Principales}
 \begin{itemize}
-    \item \textbf{Backend:} Python 3.13 + Django 5.2.
-    \item \textbf{API:} Django REST Framework (DRF) con JWT.
+    \item \textbf{Backend:} Python 3.13 + FastAPI.
+    \item \textbf{ORM y Validación:} SQLAlchemy, Alembic y Pydantic.
     \item \textbf{Base de Datos:} MySQL (Producción), SQLite (Desarrollo).
-    \item \textbf{Infraestructura:} Railway (PaaS) con despliegue continuo desde GitHub.
-    \item \textbf{Monitorización:} Sentry (Errores), Cloudflare (Salud/DNS).
+    \item \textbf{Infraestructura:} Cloudflare Workers (Protección B2/Hotlink) y Railway (PaaS).
+    \item \textbf{Frontend:} Vue.js 3 (Composition API) optimizado sin gestores de estado complejos (sin Pinia).
 \end{itemize}
 
 \subsection{Diagrama de Componentes}
-El sistema se divide en los siguientes módulos lógicos dentro de \texttt{ApiCore}:
+El sistema se divide en los siguientes módulos lógicos:
 \begin{enumerate}
-    \item \textbf{Manga Core:} Gestión de títulos, sinopsis, estados (Modelos: \texttt{manga}, \texttt{manga\_cover}).
-    \item \textbf{Capítulos:} Gestión de contenido multimedia y volúmenes (Modelo: \texttt{chapter}).
-    \item \textbf{Usuarios y Seguridad:} Sistema RBAC (Role-Based Access Control) extendiendo \texttt{auth.User} con \texttt{UserProfile}.
-    \item \textbf{Mantenedores:} Tablas maestras para Tags, Autores, Demografías.
-    \item \textbf{DAC (Digital Access Control):} Auditoría y control de acceso granular.
+    \item \textbf{Routers / Endpoints:} Puntos de entrada HTTP manejados por FastAPI (ej. \texttt{catalog}, \texttt{reader}).
+    \item \textbf{Servicios (Services):} Lógica de negocio encapsulada y separada de las rutas.
+    \item \textbf{Capa de Datos:} SQLAlchemy gestiona los modelos (\texttt{Manga}, \texttt{Chapter}, \texttt{User}).
+    \item \textbf{Seguridad:} Dependencias de FastAPI inyectadas para verificar tokens OAuth2 JWT.
+    \item \textbf{Cache/CDN:} Resoluciones de URL de imágenes apuntando directamente al CDN B2 respaldado por Cloudflare Workers.
 \end{enumerate}
 
 \subsection{Flujo de Datos}
-1. El cliente (Frontend/App) solicita un token JWT vía \texttt{/api/token/}.
+1. El cliente solicita un token JWT vía \texttt{/api/auth/token}.
 2. Las peticiones subsiguientes incluyen el header \texttt{Authorization: Bearer <token>}.
-3. El Middleware de Seguridad (\texttt{DACAuditMiddleware}) intercepta la petición para registro.
-4. El \texttt{MangaViewSet} evalúa los permisos (\texttt{CanViewNSFW}, \texttt{IsAuthenticated}).
-5. El Serializador (\texttt{MangaCardSerializer}) transforma los datos y optimiza la respuesta.
+3. Los Middlewares (ej. CORS, Throttling) y Dependencias interceptan la petición.
+4. El servicio correspondiente (ej. \texttt{MangaService}) recupera datos de la base de datos usando SQLAlchemy.
+5. Pydantic serializa la respuesta, optimizando y validando los datos salientes de forma síncrona/asíncrona.

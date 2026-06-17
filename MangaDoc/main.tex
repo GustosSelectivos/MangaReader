@@ -87,8 +87,10 @@
     \hline
     \textbf{Versión} & \textbf{Fecha} & \textbf{Autor} & \textbf{Descripción} \\
     \hline
-    1.0 & \today & Equipo Dev & Versión Inicial del Sistema \\
     \hline
+    1.0 & \today & Equipo Dev & Versión Inicial del Sistema (Django) \\
+    \hline
+    2.0 & \today & Equipo Dev & Migración a FastAPI, Vue Composition API y Cloudflare \\
 \end{tabular}
 \end{center}
 
@@ -105,7 +107,7 @@ Esta sección detalla los endpoints operativos para integración.
 
 \subsection{Autenticación}
 \begin{lstlisting}[language=bash]
-POST /api/token/
+POST /api/auth/token
 \end{lstlisting}
 Body:
 \begin{lstlisting}[language=json]
