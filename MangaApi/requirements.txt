@@ -21,8 +21,6 @@ passlib[bcrypt]==1.7.4
 aiobotocore==2.15.2            # Reemplaza boto3 síncrono
 aiofiles==24.1.0               # Lectura/escritura de archivos async
 
-# ─── Caché / Redis ───────────────────────────────────────────────────────────
-redis[asyncio]==5.2.1          # Counter middleware (con fallback en memoria)
 
 # ─── HTTP Client (Worker de capítulos) ───────────────────────────────────────
 httpx==0.28.1                  # Reemplaza requests síncrono en chapter_view

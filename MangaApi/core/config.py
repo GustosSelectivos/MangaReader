@@ -69,11 +69,6 @@ class Settings(BaseSettings):
     WORKER_URL: str = "http://127.0.0.1:8001"
     WORKER_API_KEY: str = ""
 
-    # ── Redis (Counter Middleware) ─────────────────────────────────────────────
-    REDIS_URL: str = "redis://localhost:6379/0"
-    # Si Redis no está disponible, el counter usará un fallback en memoria
-    REDIS_ENABLED: bool = True
-
     # ── CORS ─────────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = [
         "https://www.miswebtoons.uk",

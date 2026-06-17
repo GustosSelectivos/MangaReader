@@ -23,13 +23,9 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 
 from core.config import settings
 from core.exceptions import register_exception_handlers
-from middlewares.counter import APICallCounterMiddleware
-from middlewares.audit import DACAuditMiddleware
-from middlewares.request_logger import RequestLoggerMiddleware
 from middlewares.security import SecurityHeadersMiddleware
 
 from slowapi import _rate_limit_exceeded_handler
@@ -107,17 +103,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # 1. Security Headers (debe ir antes del ruteo para inyectar en toda respuesta)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 2. GZip (equivale a django.middleware.gzip.GZipMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# 3. DAC Audit (equivale a DACAuditMiddleware de Django – CORREGIDO)
-app.add_middleware(DACAuditMiddleware)
 
-# 4. API Call Counter (equivale a APICallCounterMiddleware de Django – MEJORADO)
-app.add_middleware(APICallCounterMiddleware)
-
-# 5. Request Logger (para visualizar detalles de tiempo, ip, status)
-# app.add_middleware(RequestLoggerMiddleware)
 
 # 1. CORS (Debe ser el ÚLTIMO en añadirse para que sea la capa más externa y atrape OPTIONS)
 app.add_middleware(
@@ -156,17 +143,9 @@ app.include_router(stats_router, prefix=API_PREFIX)        # /api/stats/...
 async def health_check():
     """
     Equivale a HealthCheckView de Django.
-    Verifica estado de la BD.
+    Verifica que la API responda.
     """
-    from core.database import engine
-    from sqlalchemy import text
-    db_status = "ok"
-    try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        db_status = "error"
-    return {"status": "ok", "db": db_status}
+    return {"status": "ok"}
 
 
 # ── Dev runner ────────────────────────────────────────────────────────────────
