@@ -27,7 +27,7 @@ const demografiaIds = ref({ shonen: null, seinen: null, erotico: null })
 const demografiasMap = new Map()
 let demografiasLoaded = false
 
-// --- Auth state (Pinia) para control de acceso ---
+// --- Auth state para control de acceso ---
 const auth = useAuthStore()
 const isAuthenticated = computed(() => auth.isAuthenticated)
 
